@@ -6,12 +6,14 @@ from fastapi import FastAPI
 
 from app.api.highlights import router as highlights_router
 from app.api.parse import router as parse_router
+from app.api.qa import router as qa_router
 from app.api.summarize import router as summarize_router
 
 app = FastAPI(title="ReadMind AI Service", version="0.1.0")
 app.include_router(parse_router)
 app.include_router(summarize_router)
 app.include_router(highlights_router)
+app.include_router(qa_router)
 
 
 @app.get("/health")

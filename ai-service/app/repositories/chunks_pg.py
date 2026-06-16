@@ -10,7 +10,7 @@ from __future__ import annotations
 import psycopg
 from pgvector.psycopg import register_vector
 
-from app.parse.ports import ChunkRecord, ChunkText
+from app.parse.ports import ChunkRecord, ChunkText, RetrievedChunk
 
 
 class PgChunkRepository:
@@ -26,6 +26,31 @@ class PgChunkRepository:
             )
             return [
                 ChunkText(chunk_index=r[0], page_no=r[1], content=r[2])
+                for r in cur.fetchall()
+            ]
+
+    def search_similar_chunks(
+        self, document_id: int, embedding: list[float], k: int
+    ) -> list[RetrievedChunk]:
+        # `<=>` = pgvector 코사인 거리. 데이터 적재 후 hnsw 인덱스가 가속(§3 주석).
+        # 쿼리 벡터는 vector 리터럴로 캐스팅(리스트는 기본적으로 배열로 바인딩됨).
+        vec_literal = "[" + ",".join(str(float(x)) for x in embedding) + "]"
+        with psycopg.connect(self._dsn) as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT chunk_index, page_no, content, "
+                "       embedding <=> %s::vector AS distance "
+                "FROM document_chunks "
+                "WHERE document_id = %s AND embedding IS NOT NULL "
+                "ORDER BY distance LIMIT %s",
+                (vec_literal, document_id, k),
+            )
+            return [
+                RetrievedChunk(
+                    chunk_index=r[0],
+                    page_no=r[1],
+                    content=r[2],
+                    distance=float(r[3]),
+                )
                 for r in cur.fetchall()
             ]
 

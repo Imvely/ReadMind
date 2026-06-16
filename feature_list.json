@@ -48,7 +48,7 @@
       "id": "ai-qa-rag",
       "spec": "§5.4",
       "desc": "/ai/qa — RAG: 질문 임베딩→top-k 검색→발췌 근거로만 답변. 반드시 sources[{chunkIndex,pageNo,snippet}] 반환(환각 방지)",
-      "passes": false
+      "passes": true
     },
     {
       "phase": 0,

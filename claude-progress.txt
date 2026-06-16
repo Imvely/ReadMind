@@ -46,7 +46,17 @@
 - 검증(라이브, .venv py3.14): ruff 통과 + pytest 63개 통과. 하이라이트 신규 12개: 해피(pageNo 원문유래)/환각드롭/limit/중복/짧은문장스킵/청크없음(LLM미호출)/비배열/비JSON/라우터(200 aliased pageNo·422·502·limit검증).
 - M1 AI 4개 엔드포인트 중 3개 완료(parse/summarize/suggest-highlights). 남은 1개: qa.
 
+[2026-06-16] ai-qa-rag 완료. /ai/qa(§5.4) RAG Q&A:
+- schemas/qa.py: QaRequest{documentId,question,history?[{role,content}]} + QaResponse{answer,sources[{chunkIndex,pageNo,snippet}]}.
+- ports.py: RetrievedChunk + ChunkRetriever Protocol. chunks_pg.py: search_similar_chunks(embedding<=>%s::vector 코사인, document_id 스코프, ORDER BY distance LIMIT k). 주의: 리스트 파라미터는 기본적으로 double precision[]로 바인딩됨 → vector 리터럴 "[...]"::vector 캐스팅 필수(register_vector만으론 연산자 매칭 실패).
+- rag/: prompts.py(발췌 근거+인용 강제) + qa.py(answer_question) + errors.py(QaError).
+- 환각 방지(§3) 핵심: 질문 임베딩→top-k 검색→LLM {answer,citations[chunkIndex]}. citations를 검색결과와 교차검증, 없는 인용 버림. snippet/pageNo는 실제 청크에서만. **검증된 근거 0개면 답을 NO_EVIDENCE("문서에서 답을 찾을 수 없습니다")로 강등** — 근거 없는 답변 절대 안 냄. 검색결과 0이면 LLM 호출도 안 함.
+- api/qa.py 라우터 + main 등록. deps get_chunk_retriever 추가. QaError→422, ProviderError→502.
+- 검증(라이브, .venv py3.14): ruff 통과 + pytest 79개 통과. qa 신규 16개: 해피(answer+sources, 질문 임베딩 확인)/인용교차검증/근거없음강등/검색0(LLM미호출)/중복인용/문자열인용coerce/비JSON/빈답변 + 라우터(200 aliased·근거없음·422·502·history) + 실 DB 벡터검색 3개(코사인 거리정렬·k제한·문서스코프, test_rag 격리스키마). public 오염 0 확인.
+
+[M1 Phase0 AI 4종 완료] parse/summarize/suggest-highlights/qa. 명세서 §8 P0 "AI 서비스" 체크박스 [x]. provider 추상화도 [x].
+
 [다음 세션 시작 시]
 - 막힘: 없음.
-- 제일 먼저: ai-qa-rag (§5.4). RAG: 질문 임베딩→document_chunks top-k(예6) 코사인 검색→발췌만 근거로 답변. **반드시 sources[{chunkIndex,pageNo,snippet}] 반환**(환각방지 필수, CLAUDE.md §3). 입력 {documentId,question,history?}.
-- 참고: pgvector 코사인 검색 SQL 필요(embedding <=> query, hnsw). EmbeddingProvider로 질문 임베딩. ChunkReader 패턴 확장(벡터검색 메서드 추가) — 실 DB 통합테스트 가능(readmind-postgres 가동). FakeLLM/Fake벡터검색으로 단위테스트. jsonout/프롬프트 패턴 재사용.
+- 제일 먼저: be-auth-jwt (§4.1, M2 백엔드 시작). 빌드순서 M1→M2 진입. Spring Boot 3.x(Kotlin) + Spring Security + JWT(access+refresh): /auth/signup, /auth/login, /auth/refresh, /auth/me. Flyway V1__init.sql(§3 스키마: users 등). 응답 공통래퍼 {success,data}/{success,error}.
+- 참고: backend/ 디렉터리 신규. document_chunks/documents DDL은 여기 Flyway가 소유(AI는 적재만 했음). 빌드는 gradle. 인프라 postgres readmind-postgres 가동 중. 시크릿(JWT_SECRET 등)은 env.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import fitz  # PyMuPDF
 
-from app.parse.ports import ChunkRecord, ChunkText
+from app.parse.ports import ChunkRecord, ChunkText, RetrievedChunk
 from app.providers.errors import ProviderError
 
 
@@ -95,10 +95,32 @@ class FakeLLM:
         return sum(1 for _, _, jm in self.calls if not jm)
 
 
+class FakeRetriever:
+    """search_similar_chunks용 페이크. 미리 준비한 hits를 top-k로 반환."""
+
+    def __init__(self, hits: list[RetrievedChunk]) -> None:
+        self._hits = hits
+        self.calls: list[tuple[int, int]] = []
+
+    def search_similar_chunks(
+        self, document_id: int, embedding: list[float], k: int
+    ) -> list[RetrievedChunk]:
+        self.calls.append((document_id, k))
+        return self._hits[:k]
+
+
 def chunk_texts(contents: list[str]) -> list[ChunkText]:
     return [
         ChunkText(chunk_index=i, page_no=i + 1, content=c)
         for i, c in enumerate(contents)
+    ]
+
+
+def retrieved(items: list[tuple[int, int | None, str]]) -> list[RetrievedChunk]:
+    """(chunk_index, page_no, content) 튜플 목록 → RetrievedChunk 목록."""
+    return [
+        RetrievedChunk(chunk_index=ci, page_no=pg, content=c, distance=0.1 * n)
+        for n, (ci, pg, c) in enumerate(items)
     ]
 
 

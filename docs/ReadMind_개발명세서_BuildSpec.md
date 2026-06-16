@@ -519,7 +519,7 @@ readmind/
 
 ### Phase 0 — 웹 MVP (1개월 목표): "업로드 → 요약 → 핵심 하이라이트 → 질문 3개"
 - [x] `docker-compose`로 postgres(pgvector)+redis+minio 기동, `.env.example` 작성
-- [ ] **AI 서비스**: `/ai/parse`(PDF만 먼저) + `/ai/summarize`(PAPER) + `/ai/suggest-highlights` + `/ai/qa`
+- [x] **AI 서비스**: `/ai/parse`(PDF만 먼저) + `/ai/summarize`(PAPER) + `/ai/suggest-highlights` + `/ai/qa`
 - [x] `LLMProvider`/`EmbeddingProvider` 인터페이스 + 1개 구현체(환경변수로 모델 선택)
 - [ ] **백엔드**: 회원/로그인(JWT), 문서 업로드(presigned), 파싱 트리거, `/summarize` `/qa` 위임 + 캐싱
 - [ ] **웹**: 업로드 화면 + pdf.js 뷰어 + 우측 요약/Q&A 패널. Q&A sources 클릭 점프

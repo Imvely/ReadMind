@@ -39,9 +39,18 @@ ReadMind AI 서비스. 문서 파싱 → 요약/하이라이트/Q&A를 담당한
     버리고, `pageNo`는 매칭된 청크의 `page_no`에서 가져온다 → 환각 방지 + 실제
     위치 점프 보장(§3 근거 철학). 중복 제거, `limit` 상한.
 
-> Q&A(RAG) 라우터와 EPUB/DOCX 파서는 다음 항목에서 추가한다.
+- **/ai/qa (§5.4)** — `app/rag/`, `app/schemas/qa.py`
+  - 입력 `{documentId, question, history?}` → `{answer, sources:[{chunkIndex,pageNo,snippet}]}`.
+  - 질문 임베딩 → `document_chunks` **pgvector top-k 코사인 검색**(`<=>`) → 발췌만
+    근거로 LLM 답변. LLM이 인용한 `chunkIndex`를 검색 결과와 **교차검증**해
+    sources 생성(snippet/pageNo는 실제 청크에서만). 검증된 근거가 없으면 답을
+    "모른다"로 강등 — **근거 없는 답변 금지(§3)**, sources는 항상 반환.
+
+> EPUB/DOCX 파서는 다음 항목(`ai-parse-multi`)에서 추가한다.
 > 공용 JSON 파서는 `app/core/jsonout.py`(`JsonOutputError`) — 각 도메인이 매핑.
 > `document_chunks` DDL은 백엔드 Flyway(M2) 소유 — AI 서비스는 적재/조회만 한다.
+
+**M1 Phase 0 AI 엔드포인트 4종 완료**: parse · summarize · suggest-highlights · qa.
 
 ## 환경변수 (명세서 §10)
 

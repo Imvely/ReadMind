@@ -30,6 +30,16 @@ class ChunkText:
     content: str
 
 
+@dataclass(frozen=True)
+class RetrievedChunk:
+    """벡터 검색 결과 청크 + 거리(작을수록 유사)."""
+
+    chunk_index: int
+    page_no: int | None
+    content: str
+    distance: float
+
+
 @runtime_checkable
 class Storage(Protocol):
     """S3 호환 객체 스토리지에서 원본 바이트를 가져온다."""
@@ -54,4 +64,15 @@ class ChunkReader(Protocol):
 
     def fetch_document_chunks(self, document_id: int) -> list[ChunkText]:
         """chunk_index 오름차순으로 문서의 청크 텍스트를 읽는다."""
+        ...
+
+
+@runtime_checkable
+class ChunkRetriever(Protocol):
+    """문서 내 벡터 유사도 검색(RAG용)."""
+
+    def search_similar_chunks(
+        self, document_id: int, embedding: list[float], k: int
+    ) -> list[RetrievedChunk]:
+        """질문 임베딩과 코사인 거리가 가까운 top-k 청크를 반환."""
         ...

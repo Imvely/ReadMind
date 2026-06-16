@@ -16,7 +16,7 @@
       "id": "ai-providers",
       "spec": "§5.7, §0.3",
       "desc": "LLMProvider/EmbeddingProvider 인터페이스 + 구현체 1개(환경변수로 모델 선택)",
-      "passes": false
+      "passes": true
     },
     {
       "phase": 0,

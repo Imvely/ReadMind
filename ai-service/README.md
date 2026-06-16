@@ -32,7 +32,15 @@ ReadMind AI 서비스. 문서 파싱 → 요약/하이라이트/Q&A를 담당한
     내성 파서 포함. LLM은 `LLMProvider.complete(json_mode=True)` 경유.
   - 소유권(user_id)·쿼터 검증은 백엔드 게이트(be-ai-gate-cache) 담당 — 내부 전용.
 
-> 하이라이트/Q&A 라우터와 EPUB/DOCX 파서는 다음 항목에서 추가한다.
+- **/ai/suggest-highlights (§5.5)** — `app/highlights/`, `app/schemas/highlights.py`
+  - 입력 `{documentId, limit?}` → `[{pageNo, text, reason}]`.
+  - `document_chunks`를 윈도우로 묶어 LLM에 핵심 문장 추출을 요청한 뒤, 각 문장이
+    **실제 원문에 존재하는지 대조**한다(정규화 부분일치). 원문에 없으면(지어낸 문장)
+    버리고, `pageNo`는 매칭된 청크의 `page_no`에서 가져온다 → 환각 방지 + 실제
+    위치 점프 보장(§3 근거 철학). 중복 제거, `limit` 상한.
+
+> Q&A(RAG) 라우터와 EPUB/DOCX 파서는 다음 항목에서 추가한다.
+> 공용 JSON 파서는 `app/core/jsonout.py`(`JsonOutputError`) — 각 도메인이 매핑.
 > `document_chunks` DDL은 백엔드 Flyway(M2) 소유 — AI 서비스는 적재/조회만 한다.
 
 ## 환경변수 (명세서 §10)

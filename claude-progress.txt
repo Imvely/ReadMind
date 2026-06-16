@@ -37,7 +37,16 @@
 - 검증(라이브, .venv py3.14): ruff 통과 + pytest 51개 통과. 요약 신규: 단일패스/map-reduce(json 1+note≥2 호출 검증)/PLAIN/펜스JSON/청크없음/스키마불일치/비JSON/라우터(200·기본PAPER·422·502·잘못된style). 모두 FakeLLM·FakeReader로 실 LLM/DB 없이.
 - 주의(무해): starlette TestClient httpx deprecation + HTTP_422_UNPROCESSABLE_ENTITY 리네임 경고 2건. 동작 영향 없음.
 
+[2026-06-16] ai-suggest-highlights 완료. /ai/suggest-highlights(§5.5):
+- schemas/highlights.py: SuggestHighlightsRequest{documentId,limit(1~50,기본10)} + Highlight{pageNo,text,reason}.
+- highlights/: prompts.py(원문 그대로 복사 강제) + service.py(suggest_highlights) + errors.py(HighlightError).
+- 환각 방지 핵심: LLM이 고른 문장을 실제 청크 원문과 정규화 부분일치로 대조. 없으면 버림(지어낸 문장 제거). pageNo는 LLM 주장값이 아니라 매칭된 청크 page_no에서 가져옴. 중복제거 + limit 상한 + 최소길이(정규화 8자) 가드.
+- 리팩터: jsonout을 app/summarize/ → app/core/jsonout.py로 이동(JsonOutputError). summarize/highlights가 각자 도메인 예외로 매핑(레이어 누수 방지). 기존 summarize 테스트 그대로 통과.
+- api/highlights.py 라우터 + main 등록. HighlightError→422, ProviderError→502.
+- 검증(라이브, .venv py3.14): ruff 통과 + pytest 63개 통과. 하이라이트 신규 12개: 해피(pageNo 원문유래)/환각드롭/limit/중복/짧은문장스킵/청크없음(LLM미호출)/비배열/비JSON/라우터(200 aliased pageNo·422·502·limit검증).
+- M1 AI 4개 엔드포인트 중 3개 완료(parse/summarize/suggest-highlights). 남은 1개: qa.
+
 [다음 세션 시작 시]
 - 막힘: 없음.
-- 제일 먼저: ai-suggest-highlights (§5.5). 섹션별 핵심 문장 N개 추출 → [{pageNo,text,reason}]. document_chunks(page_no 보존됨) 읽어 LLMProvider로 추출. ChunkReader/jsonout/요약 패턴 재사용 가능. 실 LLM 없이 FakeLLM 주입 테스트.
-- 참고: parse→summarize 패턴 정착됨(라우터+service+ports+FakeLLM). Postgres readmind-postgres 가동 중.
+- 제일 먼저: ai-qa-rag (§5.4). RAG: 질문 임베딩→document_chunks top-k(예6) 코사인 검색→발췌만 근거로 답변. **반드시 sources[{chunkIndex,pageNo,snippet}] 반환**(환각방지 필수, CLAUDE.md §3). 입력 {documentId,question,history?}.
+- 참고: pgvector 코사인 검색 SQL 필요(embedding <=> query, hnsw). EmbeddingProvider로 질문 임베딩. ChunkReader 패턴 확장(벡터검색 메서드 추가) — 실 DB 통합테스트 가능(readmind-postgres 가동). FakeLLM/Fake벡터검색으로 단위테스트. jsonout/프롬프트 패턴 재사용.

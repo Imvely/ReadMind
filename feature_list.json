@@ -40,7 +40,7 @@
       "id": "ai-suggest-highlights",
       "spec": "§5.5",
       "desc": "/ai/suggest-highlights — 섹션별 핵심 문장 N개 추출 [{pageNo,text,reason}]",
-      "passes": false
+      "passes": true
     },
     {
       "phase": 0,

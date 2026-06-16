@@ -1,11 +1,16 @@
-"""LLM JSON 출력 파싱. 코드펜스/잡텍스트를 견디고 첫 JSON 객체만 뽑는다."""
+"""LLM JSON 출력 파싱(공용). 코드펜스/잡텍스트를 견디고 첫 JSON 객체만 뽑는다.
+
+호출부(요약·하이라이트 등)가 각자 도메인 예외로 매핑한다.
+"""
 
 from __future__ import annotations
 
 import json
 from typing import Any
 
-from app.summarize.errors import SummarizeError
+
+class JsonOutputError(RuntimeError):
+    """LLM 응답을 JSON 객체로 파싱하지 못함."""
 
 
 def parse_json_object(raw: str) -> dict[str, Any]:
@@ -25,5 +30,5 @@ def parse_json_object(raw: str) -> dict[str, Any]:
             try:
                 return json.loads(text[start : end + 1])
             except json.JSONDecodeError as exc:
-                raise SummarizeError(f"LLM JSON 파싱 실패: {exc!r}") from exc
-        raise SummarizeError("LLM 응답에서 JSON 객체를 찾지 못했다.") from None
+                raise JsonOutputError(f"LLM JSON 파싱 실패: {exc!r}") from exc
+        raise JsonOutputError("LLM 응답에서 JSON 객체를 찾지 못했다.") from None

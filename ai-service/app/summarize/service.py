@@ -12,6 +12,7 @@ from __future__ import annotations
 from pydantic import ValidationError
 
 from app.chunking.tokens import estimate_tokens
+from app.core.jsonout import JsonOutputError, parse_json_object
 from app.parse.ports import ChunkReader, ChunkText
 from app.providers.llm import LLMProvider
 from app.schemas.summarize import (
@@ -22,7 +23,6 @@ from app.schemas.summarize import (
 )
 from app.summarize import prompts
 from app.summarize.errors import SummarizeError
-from app.summarize.jsonout import parse_json_object
 
 # 단일 호출로 처리할 본문 토큰 상한. 초과 시 map-reduce.
 SINGLE_PASS_TOKENS = 6000
@@ -54,7 +54,10 @@ def summarize(
         notes = _map_notes(chunks, llm=llm, group_tokens=map_group_tokens)
         raw = llm.complete(system, prompts.reduce_user(notes), json_mode=True)
 
-    data = parse_json_object(raw)
+    try:
+        data = parse_json_object(raw)
+    except JsonOutputError as exc:
+        raise SummarizeError(str(exc)) from exc
     model = PaperSummary if is_paper else PlainSummary
     try:
         return model(**data)

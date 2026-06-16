@@ -1,0 +1,198 @@
+{
+  "_comment": "ReadMind 빌드 체크리스트. 명세서(docs/ReadMind_개발명세서_BuildSpec.md) §8과 1:1 대응. CLAUDE.md §12 워크플로에 따라 passes:false 중 위에서부터 하나씩만 작업하고, 완료 기준(§12.3) 충족 시에만 passes:true로 변경.",
+  "active_phase": 0,
+  "features": [
+    {
+      "phase": 0,
+      "module": "M0",
+      "id": "infra-compose",
+      "spec": "§8 P0, §7, §10",
+      "desc": "docker-compose로 postgres(pgvector)+redis+minio 기동, .env.example 작성",
+      "passes": true
+    },
+    {
+      "phase": 0,
+      "module": "M1",
+      "id": "ai-providers",
+      "spec": "§5.7, §0.3",
+      "desc": "LLMProvider/EmbeddingProvider 인터페이스 + 구현체 1개(환경변수로 모델 선택)",
+      "passes": false
+    },
+    {
+      "phase": 0,
+      "module": "M1",
+      "id": "ai-parse-pdf",
+      "spec": "§5.2",
+      "desc": "/ai/parse — PDF만 먼저. PyMuPDF 텍스트 추출 → 청킹(500~800토큰,오버랩80) → 임베딩 → document_chunks 저장(page_no 보존)",
+      "passes": false
+    },
+    {
+      "phase": 0,
+      "module": "M1",
+      "id": "ai-summarize-paper",
+      "spec": "§5.3",
+      "desc": "/ai/summarize PAPER 스타일 — 고정 JSON 스키마(tldr/structure/keypoints/glossary) 출력",
+      "passes": false
+    },
+    {
+      "phase": 0,
+      "module": "M1",
+      "id": "ai-suggest-highlights",
+      "spec": "§5.5",
+      "desc": "/ai/suggest-highlights — 섹션별 핵심 문장 N개 추출 [{pageNo,text,reason}]",
+      "passes": false
+    },
+    {
+      "phase": 0,
+      "module": "M1",
+      "id": "ai-qa-rag",
+      "spec": "§5.4",
+      "desc": "/ai/qa — RAG: 질문 임베딩→top-k 검색→발췌 근거로만 답변. 반드시 sources[{chunkIndex,pageNo,snippet}] 반환(환각 방지)",
+      "passes": false
+    },
+    {
+      "phase": 0,
+      "module": "M2",
+      "id": "be-auth-jwt",
+      "spec": "§4.1",
+      "desc": "회원/로그인 JWT(access+refresh): /auth/signup, /auth/login, /auth/refresh, /auth/me",
+      "passes": false
+    },
+    {
+      "phase": 0,
+      "module": "M2",
+      "id": "be-doc-upload",
+      "spec": "§4.2",
+      "desc": "문서 업로드: /documents presigned URL → /documents/{id}/complete → AI 파싱 비동기 트리거, parse_status 관리",
+      "passes": false
+    },
+    {
+      "phase": 0,
+      "module": "M2",
+      "id": "be-ai-gate-cache",
+      "spec": "§4.4, §3",
+      "desc": "/documents/{id}/summarize, /qa 위임 — 쿼터 게이트→캐시 조회→AI 호출→캐시 저장 순서 강제. 소유권(user_id) 검증",
+      "passes": false
+    },
+    {
+      "phase": 0,
+      "module": "M3",
+      "id": "web-upload-viewer",
+      "spec": "§6.1",
+      "desc": "웹: 업로드 화면 + pdf.js 뷰어 + 우측 요약/Q&A 패널. Q&A sources 클릭 시 본문 위치 점프",
+      "passes": false
+    },
+    {
+      "phase": 0,
+      "module": "M0",
+      "id": "p0-beta-validate",
+      "spec": "§8 P0",
+      "desc": "대학원 커뮤니티 베타 배포. 검증 지표=재사용률(같은 사람이 다른 논문을 또 올리는가)",
+      "passes": false
+    },
+    {
+      "phase": 1,
+      "module": "M2",
+      "id": "be-annotations-crud",
+      "spec": "§4.3, §3",
+      "desc": "하이라이트/메모/북마크/진행률 CRUD. location JSONB(PDF rects / EPUB cfi). 소유권 검증 필수",
+      "passes": false
+    },
+    {
+      "phase": 1,
+      "module": "M2",
+      "id": "be-highlight-search",
+      "spec": "§4.3",
+      "desc": "/highlights/search?q=&tag= — 전 문서 횡단 하이라이트 통합 검색(유료 핵심)",
+      "passes": false
+    },
+    {
+      "phase": 1,
+      "module": "M1",
+      "id": "ai-parse-multi",
+      "spec": "§5.2",
+      "desc": "EPUB(ebooklib)/TXT/DOCX(python-docx) 파서 추가. 디스패처 패턴(format→parser)",
+      "passes": false
+    },
+    {
+      "phase": 1,
+      "module": "M3",
+      "id": "web-reader-settings",
+      "spec": "§6.1",
+      "desc": "리딩 설정(다크/세피아/라이트, 폰트·크기·줄간격·여백, 단일/2단, 자동 스크롤) + epubjs 렌더",
+      "passes": false
+    },
+    {
+      "phase": 1,
+      "module": "M1",
+      "id": "ai-translate",
+      "spec": "§4.4, §5",
+      "desc": "/ai/translate 번역(원문대조) + 자동 하이라이트 추천 UI 연동",
+      "passes": false
+    },
+    {
+      "phase": 1,
+      "module": "M4",
+      "id": "mobile-reader-sync",
+      "spec": "§6.2, §4.5",
+      "desc": "안드로이드 앱(리더+오프라인 MMKV/SQLite) + /sync/changes·/sync/push 증분 동기화(LWW, tombstone, 유료 게이트)",
+      "passes": false
+    },
+    {
+      "phase": 2,
+      "module": "M1",
+      "id": "ai-flashcards-fsrs",
+      "spec": "§5.5, §5.6",
+      "desc": "/flashcards/generate(하이라이트·요약 기반 Q-A) + FSRS 복습 큐(/flashcards/due, /review) + /review 화면",
+      "passes": false
+    },
+    {
+      "phase": 2,
+      "module": "M2",
+      "id": "be-quota-tiers",
+      "spec": "§4.4, §3",
+      "desc": "usage_quotas 쿼터 시스템 + FREE/PRO/STUDENT 게이트 전면 적용. 초과 시 403 QUOTA_EXCEEDED",
+      "passes": false
+    },
+    {
+      "phase": 2,
+      "module": "M2",
+      "id": "be-billing",
+      "spec": "§4.6",
+      "desc": "결제 연동(토스/아임포트 추상화) + /billing/webhook 서명검증 + 구독 상태 관리",
+      "passes": false
+    },
+    {
+      "phase": 2,
+      "module": "M3",
+      "id": "web-upsell",
+      "spec": "§4.1, §6.1",
+      "desc": "학생 이메일 인증, 업그레이드 모달, 전환율 계측",
+      "passes": false
+    },
+    {
+      "phase": 3,
+      "module": "M1",
+      "id": "ai-format-ocr",
+      "spec": "§5.2, §8 P3",
+      "desc": "HWP/HWPX, MOBI/FB2/CBZ 포맷 파서 + OCR(스캔 PDF) 추상화 구현",
+      "passes": false
+    },
+    {
+      "phase": 3,
+      "module": "M2",
+      "id": "be-team-collab",
+      "spec": "§8 P3",
+      "desc": "팀/연구실 공유 컬렉션, 협업 하이라이트",
+      "passes": false
+    },
+    {
+      "phase": 3,
+      "module": "M3",
+      "id": "onboarding-segments",
+      "spec": "§8 P3",
+      "desc": "인접 타깃(수험·직장인) 온보딩 분기",
+      "passes": false
+    }
+  ]
+}

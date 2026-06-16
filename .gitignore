@@ -1,0 +1,29 @@
+# 시크릿 — 절대 커밋 금지 (CLAUDE.md §3, §10)
+.env
+.env.*
+!.env.example
+
+# 의존성 / 빌드 산출물
+node_modules/
+dist/
+build/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.gradle/
+target/
+out/
+
+# 도커 볼륨 로컬 데이터
+.data/
+volumes/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*.log
+
+# Claude Code — 로컬 전용 설정(머신별 권한 등)은 커밋 금지, 공유 설정/hook은 커밋
+.claude/settings.local.json

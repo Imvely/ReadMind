@@ -22,8 +22,18 @@ ReadMind AI 서비스. 문서 파싱 → 요약/하이라이트/Q&A를 담당한
   - 청크 `page_no`는 기여 토큰이 가장 많은 페이지(근거 위치 추적용).
   - 내부 전용: `AI_SERVICE_TOKEN` 설정 시 `X-Service-Token` 헤더 강제(§5).
 
-> 요약/하이라이트/Q&A 라우터와 EPUB/DOCX 파서는 다음 항목에서 추가한다.
-> `document_chunks` DDL은 백엔드 Flyway(M2) 소유 — AI 서비스는 적재만 한다.
+- **/ai/summarize (§5.3)** — `app/summarize/`, `app/schemas/summarize.py`
+  - 입력 `{documentId, style}` (style: `PAPER`|`PLAIN`, 기본 PAPER).
+  - `document_chunks`를 읽어 요약(재파싱 0회). 짧으면 단일 LLM 호출, 길면
+    **map-reduce**(청크 그룹별 부분요약 → 통합).
+  - PAPER 고정 JSON: `{tldr, structure{objective,method,results,limitations,
+    contribution}, keypoints[], glossary[{term,desc}]}`. PLAIN: `{tldr, keypoints[]}`.
+  - LLM 출력은 pydantic 스키마로 **검증**(누락/형식오류 → 422). 코드펜스/잡텍스트
+    내성 파서 포함. LLM은 `LLMProvider.complete(json_mode=True)` 경유.
+  - 소유권(user_id)·쿼터 검증은 백엔드 게이트(be-ai-gate-cache) 담당 — 내부 전용.
+
+> 하이라이트/Q&A 라우터와 EPUB/DOCX 파서는 다음 항목에서 추가한다.
+> `document_chunks` DDL은 백엔드 Flyway(M2) 소유 — AI 서비스는 적재/조회만 한다.
 
 ## 환경변수 (명세서 §10)
 

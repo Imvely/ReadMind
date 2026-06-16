@@ -32,7 +32,7 @@
       "id": "ai-summarize-paper",
       "spec": "§5.3",
       "desc": "/ai/summarize PAPER 스타일 — 고정 JSON 스키마(tldr/structure/keypoints/glossary) 출력",
-      "passes": false
+      "passes": true
     },
     {
       "phase": 0,

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import fitz  # PyMuPDF
 
-from app.parse.ports import ChunkRecord
+from app.parse.ports import ChunkRecord, ChunkText
+from app.providers.errors import ProviderError
 
 
 def make_pdf(pages_text: list[str]) -> bytes:
@@ -48,3 +49,64 @@ class FakeRepo:
         self, document_id: int, chunks: list[ChunkRecord]
     ) -> None:
         self.saved[document_id] = chunks
+
+
+class FakeReader:
+    """fetch_document_chunks용 페이크."""
+
+    def __init__(self, chunks: list[ChunkText]) -> None:
+        self._chunks = chunks
+        self.calls: list[int] = []
+
+    def fetch_document_chunks(self, document_id: int) -> list[ChunkText]:
+        self.calls.append(document_id)
+        return self._chunks
+
+
+class FakeLLM:
+    """json_mode면 json_response를, 아니면 note_response를 반환. 호출 기록 보존.
+
+    raise_error를 주면 complete가 ProviderError를 던진다(실패 경로 테스트).
+    """
+
+    def __init__(
+        self,
+        json_response: str = "{}",
+        note_response: str = "- note",
+        raise_error: bool = False,
+    ) -> None:
+        self.json_response = json_response
+        self.note_response = note_response
+        self.raise_error = raise_error
+        self.calls: list[tuple[str, str, bool]] = []
+
+    def complete(self, system: str, user: str, *, json_mode: bool = False) -> str:
+        self.calls.append((system, user, json_mode))
+        if self.raise_error:
+            raise ProviderError("LLM 다운")
+        return self.json_response if json_mode else self.note_response
+
+    @property
+    def json_calls(self) -> int:
+        return sum(1 for _, _, jm in self.calls if jm)
+
+    @property
+    def note_calls(self) -> int:
+        return sum(1 for _, _, jm in self.calls if not jm)
+
+
+def chunk_texts(contents: list[str]) -> list[ChunkText]:
+    return [
+        ChunkText(chunk_index=i, page_no=i + 1, content=c)
+        for i, c in enumerate(contents)
+    ]
+
+
+PAPER_JSON = (
+    '{"tldr": "한 줄 요약", '
+    '"structure": {"objective": "목적", "method": "방법", "results": "결과", '
+    '"limitations": "한계", "contribution": "기여"}, '
+    '"keypoints": ["요점1", "요점2"], '
+    '"glossary": [{"term": "용어", "desc": "설명"}]}'
+)
+PLAIN_JSON = '{"tldr": "쉬운 요약", "keypoints": ["a", "b"]}'

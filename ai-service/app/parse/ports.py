@@ -21,6 +21,15 @@ class ChunkRecord:
     embedding: list[float]
 
 
+@dataclass(frozen=True)
+class ChunkText:
+    """요약/RAG가 읽는 청크(임베딩 제외)."""
+
+    chunk_index: int
+    page_no: int | None
+    content: str
+
+
 @runtime_checkable
 class Storage(Protocol):
     """S3 호환 객체 스토리지에서 원본 바이트를 가져온다."""
@@ -36,4 +45,13 @@ class ChunkRepository(Protocol):
         self, document_id: int, chunks: list[ChunkRecord]
     ) -> None:
         """문서의 기존 청크를 지우고 새로 저장(재파싱 멱등)."""
+        ...
+
+
+@runtime_checkable
+class ChunkReader(Protocol):
+    """document_chunks 조회(요약·RAG용)."""
+
+    def fetch_document_chunks(self, document_id: int) -> list[ChunkText]:
+        """chunk_index 오름차순으로 문서의 청크 텍스트를 읽는다."""
         ...

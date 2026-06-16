@@ -10,12 +10,24 @@ from __future__ import annotations
 import psycopg
 from pgvector.psycopg import register_vector
 
-from app.parse.ports import ChunkRecord
+from app.parse.ports import ChunkRecord, ChunkText
 
 
 class PgChunkRepository:
     def __init__(self, dsn: str) -> None:
         self._dsn = dsn
+
+    def fetch_document_chunks(self, document_id: int) -> list[ChunkText]:
+        with psycopg.connect(self._dsn) as conn, conn.cursor() as cur:
+            cur.execute(
+                "SELECT chunk_index, page_no, content FROM document_chunks "
+                "WHERE document_id = %s ORDER BY chunk_index",
+                (document_id,),
+            )
+            return [
+                ChunkText(chunk_index=r[0], page_no=r[1], content=r[2])
+                for r in cur.fetchall()
+            ]
 
     def replace_document_chunks(
         self, document_id: int, chunks: list[ChunkRecord]

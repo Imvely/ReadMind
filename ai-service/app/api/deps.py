@@ -11,8 +11,9 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException, status
 
 from app.core.config import Settings, get_settings
-from app.parse.ports import ChunkRepository, Storage
+from app.parse.ports import ChunkReader, ChunkRepository, Storage
 from app.providers.embedding import EmbeddingProvider, get_embedding_provider
+from app.providers.llm import LLMProvider, get_llm_provider
 from app.repositories.chunks_pg import PgChunkRepository
 from app.storage.s3 import S3Storage
 
@@ -47,5 +48,13 @@ def get_chunk_repository(settings: SettingsDep) -> ChunkRepository:
     return PgChunkRepository(settings.postgres_url)
 
 
+def get_chunk_reader(settings: SettingsDep) -> ChunkReader:
+    return PgChunkRepository(settings.postgres_url)
+
+
 def get_embedder(settings: SettingsDep) -> EmbeddingProvider:
     return get_embedding_provider(settings)
+
+
+def get_llm(settings: SettingsDep) -> LLMProvider:
+    return get_llm_provider(settings)

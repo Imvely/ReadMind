@@ -24,7 +24,7 @@
       "id": "ai-parse-pdf",
       "spec": "§5.2",
       "desc": "/ai/parse — PDF만 먼저. PyMuPDF 텍스트 추출 → 청킹(500~800토큰,오버랩80) → 임베딩 → document_chunks 저장(page_no 보존)",
-      "passes": false
+      "passes": true
     },
     {
       "phase": 0,

@@ -16,7 +16,19 @@
 - 임베딩 차원검증: 반환 벡터 len != EMBEDDING_DIM 이면 ProviderError(스키마 vector(1024) 불일치 방지).
 - 검증(라이브, .venv Python 3.14): ruff check 통과 + pytest 17개 통과(해피패스/설정누락/HTTP4xx/503재시도/응답형식오류/차원·개수불일치/팩토리선택). httpx.MockTransport로 실제 LLM 없이.
 
+[2026-06-16] ai-parse-pdf 완료. /ai/parse 파이프라인(§5.2):
+- schemas/parse.py: ParseRequest{documentId,storageKey,format}→ParseResponse{chunkCount,language,pageCount}(camelCase alias).
+- parsers/: 디스패처(format→parser) + pdf.py(PyMuPDF, 페이지별 텍스트, 텍스트 없으면 ParserError). base.py Page/ParsedDoc/ParserError/UnsupportedFormatError.
+- chunking/: tokens.py(벤더無 토큰 추정 휴리스틱) + splitter.py(문단→문장→단어 경계, 500~800토큰 그리디팩, 오버랩80, page_no=기여토큰 최다 페이지).
+- parse/: ports.py(Storage/ChunkRepository Protocol + ChunkRecord) + pipeline.py(run_parse, 포트 주입으로 인프라 없이 테스트). 임베딩은 EmbeddingProvider 경유(차원검증 재사용).
+- storage/s3.py: S3Storage(boto3, MinIO/S3 공용). repositories/chunks_pg.py: PgChunkRepository(psycopg3+pgvector, delete후 insert=재파싱 멱등).
+- api/: FastAPI app(main.py /health) + /ai/parse 라우터. deps.py Annotated DI. AI_SERVICE_TOKEN 설정 시 X-Service-Token 강제(§5 내부전용).
+- config.py 확장: ai_service_token/postgres_url/s3_* 추가.
+- 결정: documents.language/page_count/parse_status 갱신은 백엔드(be-doc-upload) 소유. AI는 값 반환+청크 저장만. document_chunks DDL은 M2 Flyway 소유(AI는 적재만).
+- 검증(라이브, .venv py3.14): ruff 통과 + pytest 39개 통과. 그중 DB 통합 3개는 실제 Postgres(test_parse 격리스키마, pgvector vector(1024) roundtrip/멱등)로 검증, public 스키마 오염 0 확인. PDF는 실제 PyMuPDF 생성본 파싱.
+- 주의: PyMuPDF base14 폰트는 CJK 미렌더 → 테스트 PDF 픽스처는 ASCII. requirements.txt에 fastapi/uvicorn/PyMuPDF/langdetect/boto3/psycopg[binary]/pgvector 추가됨.
+
 [다음 세션 시작 시]
 - 막힘: 없음.
-- 제일 먼저: ai-parse-pdf (feature_list 다음 항목, §5.2). PDF만: PyMuPDF 텍스트 추출 → 청킹(500~800토큰, 오버랩 80) → EmbeddingProvider로 임베딩 → document_chunks 저장(page_no 보존). providers는 이미 준비됨(get_embedding_provider).
-- 참고: requirements.txt에 PyMuPDF 추가 필요. Python 3.14에서 휠 설치 가능한지 먼저 확인. 인프라 기동은 docker.exe 풀패스 + 호스트 5432 점유 시 .env POSTGRES_PORT 변경.
+- 제일 먼저: ai-summarize-paper (§5.3). PAPER 스타일 고정 JSON(tldr/structure{objective,method,results,limitations,contribution}/keypoints/glossary). LLMProvider.complete(json_mode=True) 사용. 긴 문서는 map-reduce(청크별 요약→통합). 결과 캐싱은 백엔드 몫.
+- 참고: LLMProvider/EmbeddingProvider/parse 파이프라인 모두 준비됨. 실 LLM 없이 테스트하려면 FakeLLM(고정 JSON 반환) 주입. Postgres 컨테이너 readmind-postgres 가동 중.

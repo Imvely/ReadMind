@@ -12,7 +12,18 @@ ReadMind AI 서비스. 문서 파싱 → 요약/하이라이트/Q&A를 담당한
   - 임베딩 반환 차원은 `EMBEDDING_DIM`(기본 1024, `document_chunks.embedding
     vector(1024)`와 일치)과 다르면 즉시 에러.
 
-> 파서/청킹/RAG/요약 라우터는 다음 항목(`ai-parse-pdf` 등)에서 추가한다.
+- **/ai/parse (§5.2)** — `app/parsers/`, `app/chunking/`, `app/parse/`, `app/api/`
+  - 입력 `{documentId, storageKey, format}` → 출력 `{chunkCount, language, pageCount}`.
+  - 파이프라인: S3 다운로드 → 포맷 디스패치(현재 **PDF**=PyMuPDF) → 청킹(500~800
+    토큰, 문단/문장 경계 우선, 오버랩 80, `page_no` 보존) → `EmbeddingProvider`
+    임베딩 → `document_chunks` 저장.
+  - 포트(`Storage`/`ChunkRepository`)로 인프라를 분리 — 파이프라인은 페이크로
+    테스트, 구현체는 `S3Storage`(boto3)/`PgChunkRepository`(psycopg+pgvector).
+  - 청크 `page_no`는 기여 토큰이 가장 많은 페이지(근거 위치 추적용).
+  - 내부 전용: `AI_SERVICE_TOKEN` 설정 시 `X-Service-Token` 헤더 강제(§5).
+
+> 요약/하이라이트/Q&A 라우터와 EPUB/DOCX 파서는 다음 항목에서 추가한다.
+> `document_chunks` DDL은 백엔드 Flyway(M2) 소유 — AI 서비스는 적재만 한다.
 
 ## 환경변수 (명세서 §10)
 

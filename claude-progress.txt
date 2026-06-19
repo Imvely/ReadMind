@@ -56,7 +56,15 @@
 
 [M1 Phase0 AI 4종 완료] parse/summarize/suggest-highlights/qa. 명세서 §8 P0 "AI 서비스" 체크박스 [x]. provider 추상화도 [x].
 
+[2026-06-19] be-auth-jwt 완료. M2 백엔드 진입(§4.1).
+- 발견: 이전 세션이 backend/ auth 코드를 커밋·기록 없이 남겨둠(미완). 점검 결과 코드 품질 양호 → 갈아엎지 않고 검증+테스트 보강으로 완료.
+- 구조: AuthController(/auth signup·login·refresh·me) → AuthService → UserRepository. 공통래퍼 ApiResponse{success,data/error} + GlobalExceptionHandler(ErrorCode→HTTP). JwtTokenProvider(HS256, access/refresh를 type 클레임으로 분리, 32바이트 강제). SecurityConfig(STATELESS, signup/login/refresh permitAll, 나머지 authenticated) + JwtAuthFilter(principal=userId:Long) + JwtAuthenticationEntryPoint(401 공통래퍼). User 엔티티는 Flyway 스키마에 맞춰 ddl-auto:none. JwtProperties/QuotaProperties는 @ConfigurationProperties(env 주입, JWT_SECRET 미설정 시 기동 실패).
+- V1__init.sql: §3 스키마 전체(users/subscriptions/usage_quotas/documents/document_chunks 등) 이미 작성돼 있음 — Flyway가 스키마 SSOT.
+- 빌드 검증: gradle wrapper가 통째로 없어 빌드 불가였음 → 캐시된 gradle 8.11.1로 wrapper 생성(gradlew/gradle-wrapper.jar). build.gradle에 mockito-kotlin:5.4.0 testImpl 추가.
+- 검증(라이브, ./gradlew test): 16개 통과(0 실패). JwtTokenProviderTest 7(발급·검증/type분리/위조/만료/손상, DB無 순수단위) + AuthControllerTest 9(@WebMvcTest 슬라이스+AuthService mock+실제 SecurityConfig 임포트: signup 200/검증400/중복409, login 200/자격401, refresh 200, me 토큰없음401·손상토큰401·해피200). DB/Flyway 없이 컨트롤러·보안필터 계층 검증.
+- 결정: §8 P0 "백엔드" 체크박스는 회원/로그인+업로드+위임캐싱을 한 줄로 묶어 be-doc-upload/be-ai-gate-cache 완료 시 함께 [x](이번엔 보류). 쿼터 차감은 be-quota-tiers 소관 — me는 티어별 한도만 노출(used=0).
+
 [다음 세션 시작 시]
 - 막힘: 없음.
-- 제일 먼저: be-auth-jwt (§4.1, M2 백엔드 시작). 빌드순서 M1→M2 진입. Spring Boot 3.x(Kotlin) + Spring Security + JWT(access+refresh): /auth/signup, /auth/login, /auth/refresh, /auth/me. Flyway V1__init.sql(§3 스키마: users 등). 응답 공통래퍼 {success,data}/{success,error}.
-- 참고: backend/ 디렉터리 신규. document_chunks/documents DDL은 여기 Flyway가 소유(AI는 적재만 했음). 빌드는 gradle. 인프라 postgres readmind-postgres 가동 중. 시크릿(JWT_SECRET 등)은 env.
+- 제일 먼저: be-doc-upload (§4.2). /documents presigned URL → /documents/{id}/complete → AI /ai/parse 비동기 트리거, parse_status(PENDING→READY) 관리. 소유권(user_id) 검증. documents 테이블은 V1에 이미 있음. S3(MinIO) presigned PUT. AI 서비스 호출은 ai/ 모듈 격리(§5 규칙).
+- 참고: 빌드는 backend/에서 ./gradlew (wrapper 생성됨, gradle 8.11.1). 인프라 postgres/minio 필요 시 docker-compose up. AI_SERVICE_TOKEN(X-Service-Token)으로 ai-service 내부 호출 인증.

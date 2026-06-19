@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: readmind-backend
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/readmind}
+    username: ${POSTGRES_USER:readmind}
+    password: ${POSTGRES_PASSWORD:readmind}
+  jpa:
+    hibernate:
+      ddl-auto: none          # 스키마 SSOT는 Flyway(§3). JPA는 생성/검증하지 않는다.
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  servlet:
+    context-path: /api/v1
+
+app:
+  jwt:
+    # 운영은 반드시 JWT_SECRET 주입(32바이트 이상). 미설정 시 기동 실패.
+    secret: ${JWT_SECRET}
+    access-ttl-seconds: ${JWT_ACCESS_TTL:900}
+    refresh-ttl-seconds: ${JWT_REFRESH_TTL:1209600}
+  quota:
+    free-summary-per-month: ${FREE_SUMMARY_PER_MONTH:10}
+    free-qa-per-month: ${FREE_QA_PER_MONTH:20}
+    free-translate-per-month: ${FREE_TRANSLATE_PER_MONTH:10}
+    free-storage-mb: ${FREE_STORAGE_MB:200}
+
+logging:
+  level:
+    org.flywaydb: info

@@ -56,7 +56,7 @@
       "id": "be-auth-jwt",
       "spec": "§4.1",
       "desc": "회원/로그인 JWT(access+refresh): /auth/signup, /auth/login, /auth/refresh, /auth/me",
-      "passes": false
+      "passes": true
     },
     {
       "phase": 0,

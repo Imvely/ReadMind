@@ -73,7 +73,22 @@
 - 검증(라이브, ./gradlew test --rerun-tasks): 단위 40개 통과(auth 16 + document 24: DocumentControllerTest 9·DocumentServiceTest 9·DocumentParseRunnerTest 3·DocumentStorageTest 3). ContextLoadSmokeTest는 @Tag("integration")으로 기본 제외(Postgres readmind_smoke 필요, ./gradlew integrationTest).
 - 진행 로그 .txt → .md 전환(사내 Fasoo DRM이 .txt 평문을 깨뜨림). CLAUDE.md §12.1/§12.4 참조도 .md로 갱신.
 
+[2026-06-22] be-ai-gate-cache 완료 (§4.4, §3). AI 위임 + 쿼터 게이트 + 캐싱:
+- 신규 모듈 com.readmind.ai: AiController(/documents/{id}/summarize·/qa) → AiService → (DocumentService 소유권/상태, QuotaGate, AiContentClient, SummaryRepository, Qa*Repository).
+- 강제 순서(CLAUDE.md §5): 소유권 검증 → 쿼터 게이트(검사) → 캐시 조회 → AI 호출 → 캐시 저장 → 쿼터 차감. **캐시 히트 시 AI 미호출·쿼터 미차감(변동비 0)** — AiServiceTest로 검증.
+- 소유권/상태(§3): documents.get(userId,id)로 소유권 검증(미소유 NOT_FOUND) + parseStatus!=READY면 VALIDATION. QA 세션도 findByIdAndUserIdAndDocumentId로 소유권 검증.
+- 쿼터(com.readmind.quota): QuotaGate(ensureWithin 검사 / record 차감) + UsageQuota 엔티티. FREE만 한도(QuotaProperties), PRO/STUDENT는 Phase0 무제한. 월 단위 집계 — period_start 달 바뀌면 리셋. TimeConfig의 Clock 빈으로 테스트 결정성. **전면 티어 매트릭스는 be-quota-tiers(Phase2)**.
+- 근거(§3): /qa는 AI /ai/qa의 sources를 그대로 통과({page,snippet}로 매핑) + qa_messages.sources(jsonb) 저장. 근거 0개 강등은 AI 서비스가 담당.
+- 캐싱: summaries UNIQUE(document_id,scope,scope_ref,style). Phase0은 scope=DOCUMENT만(SECTION/PAGE_RANGE 거부) → 캐시키 (문서,스타일)로 단순화. content는 AI JSON을 jsonb 그대로 보관(재모델링 안 함, 계약 보존). jsonb는 @JdbcTypeCode(SqlTypes.JSON) on String.
+- AI 격리(§5): AiContentClient(RestClient, X-Service-Token) — summarize/qa. RestClientException→ApiException(INTERNAL)로 변환해 실패 시 캐시저장·차감 안 일어나게.
+- 계약 변경(§3 절차 준수): 명세서 §4.4 /qa 티어를 PRO→FREE(소량)/PRO로 완화(Phase0 베타 경로가 FREE 질문 필요). 명세서 먼저 수정 후 코드 반영. 사용자 승인됨.
+- 검증(라이브): ./gradlew test 단위 62개(auth16+document24+ai22: AiServiceTest11·QuotaGateTest6·AiControllerTest5) + ./gradlew integrationTest 5개(ContextLoadSmokeTest2 전체 컨텍스트 부팅 + AiPersistenceIntegrationTest3 실 Postgres jsonb 라운드트립, @Transactional 롤백으로 오염0). 모두 0 실패. readmind_smoke DB(localhost:5432) 사용.
+- 명세서 §8 P0 "백엔드" 체크박스 [x](auth+upload+위임캐싱 3종 완료).
+
+[M2 Phase0 백엔드 완료] be-auth-jwt + be-doc-upload + be-ai-gate-cache. 다음은 M3 웹.
+
 [다음 세션 시작 시]
 - 막힘: 없음.
-- 제일 먼저: be-ai-gate-cache (§4.4, §3). /documents/{id}/summarize, /qa 위임 — **쿼터 게이트 → 캐시 조회 → AI 호출 → 캐시 저장** 순서 강제 + 소유권(user_id) 검증. AI 호출은 ai/ 모듈 격리. 요약 캐시는 summaries 테이블(V1에 있음). 쿼터 전면 시스템(usage_quotas 차감)은 be-quota-tiers 소관 — 여기선 게이트 골격 + FREE 한도 사전차단 정도.
-- 참고: 빌드는 backend/에서 ./gradlew (wrapper gradle 8.11.1). 통합 테스트/실DB는 docker-compose up. ai-service는 .venv(py3.14) + AI_SERVICE_TOKEN(X-Service-Token) 내부호출.
+- 제일 먼저: web-upload-viewer (§6.1, M3). 웹 업로드 화면 + pdf.js 뷰어 + 우측 요약/Q&A 패널. Q&A sources 클릭 시 본문 위치 점프. React18+TS(strict)+Vite+Tailwind+TanStack Query+Zustand+pdf.js. 서버상태=TanStack Query(useEffect 패칭 금지). web/ 디렉터리 신규.
+- 참고: 백엔드 API는 /api/v1(context-path). 인증 Bearer JWT. 요약 POST /documents/{id}/summarize {style}, QA POST /documents/{id}/qa {sessionId?,question}→{answer,sources:[{page,snippet}]}. 업로드는 POST /documents→presigned PUT→POST /documents/{id}/complete.
+- 환경: 진행 로그는 .md(.txt는 Fasoo DRM 손상). 빌드 backend/ ./gradlew, 통합은 integrationTest(readmind_smoke DB). docker readmind-postgres:5432 가동 중.

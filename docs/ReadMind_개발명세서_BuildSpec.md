@@ -334,13 +334,15 @@ CREATE INDEX idx_flashcards_due ON flashcards(user_id, due_at) WHERE deleted_at 
 |---|---|---|---|
 | POST | `/documents/{id}/summarize` | FREE(소량)/PRO | `{scope:"DOCUMENT|SECTION|PAGE_RANGE", scopeRef, style:"PAPER|PLAIN"}` → 구조화 요약(캐시) |
 | POST | `/documents/{id}/translate` | FREE(소량)/PRO | `{scope, text?, targetLang:"ko"}` → 번역(원문대조) |
-| POST | `/documents/{id}/qa` | PRO | `{sessionId?, question}` → `{answer, sources:[{page,snippet}]}` |
+| POST | `/documents/{id}/qa` | FREE(소량)/PRO | `{sessionId?, question}` → `{answer, sources:[{page,snippet}]}` |
 | POST | `/documents/{id}/suggest-highlights` | PRO | AI 핵심 문장 추천 → 후보 하이라이트 배열 |
 | POST | `/documents/{id}/flashcards/generate` | PRO | 하이라이트·요약 기반 카드 자동 생성 |
 | GET | `/flashcards/due` | PRO | 오늘 복습할 카드(FSRS) |
 | POST | `/flashcards/{fid}/review` | PRO | `{rating:"AGAIN|HARD|GOOD|EASY"}` → 다음 due 계산 |
 
 **쿼터 게이트**: FREE가 한도 초과 시 `403 QUOTA_EXCEEDED` + 업그레이드 유도 메시지. Spring이 `usage_quotas`로 사전 차단(AI 서비스 호출 전).
+
+> Phase 0 결정(2026-06-22, be-ai-gate-cache): `/qa`는 베타 검증 경로("업로드→요약→하이라이트→질문")가 FREE에서도 돌아야 하므로 **FREE도 `FREE_QA_PER_MONTH`(기본 20) 쿼터 내 허용**으로 완화했다. FREE/PRO/STUDENT 전면 티어 매트릭스(PRO 전용 기능 차단 등)는 `be-quota-tiers`(Phase 2)에서 확정한다. 캐시 히트 시에는 변동비가 없으므로 쿼터를 차감하지 않는다(차감은 실제 AI 호출 성공 시에만).
 
 ### 4.5 동기화 (증분, 유료)
 | 메서드 | 경로 | 설명 |
@@ -521,7 +523,7 @@ readmind/
 - [x] `docker-compose`로 postgres(pgvector)+redis+minio 기동, `.env.example` 작성
 - [x] **AI 서비스**: `/ai/parse`(PDF만 먼저) + `/ai/summarize`(PAPER) + `/ai/suggest-highlights` + `/ai/qa`
 - [x] `LLMProvider`/`EmbeddingProvider` 인터페이스 + 1개 구현체(환경변수로 모델 선택)
-- [ ] **백엔드**: 회원/로그인(JWT), 문서 업로드(presigned), 파싱 트리거, `/summarize` `/qa` 위임 + 캐싱
+- [x] **백엔드**: 회원/로그인(JWT), 문서 업로드(presigned), 파싱 트리거, `/summarize` `/qa` 위임 + 캐싱
 - [ ] **웹**: 업로드 화면 + pdf.js 뷰어 + 우측 요약/Q&A 패널. Q&A sources 클릭 점프
 - [ ] 대학원 커뮤니티 베타 배포. **검증 지표: 재사용(같은 사람이 다른 논문을 또 올리는가)**
 

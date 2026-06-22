@@ -72,7 +72,7 @@
       "id": "be-ai-gate-cache",
       "spec": "§4.4, §3",
       "desc": "/documents/{id}/summarize, /qa 위임 — 쿼터 게이트→캐시 조회→AI 호출→캐시 저장 순서 강제. 소유권(user_id) 검증",
-      "passes": false
+      "passes": true
     },
     {
       "phase": 0,

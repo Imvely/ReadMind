@@ -64,7 +64,7 @@
       "id": "be-doc-upload",
       "spec": "§4.2",
       "desc": "문서 업로드: /documents presigned URL → /documents/{id}/complete → AI 파싱 비동기 트리거, parse_status 관리",
-      "passes": false
+      "passes": true
     },
     {
       "phase": 0,

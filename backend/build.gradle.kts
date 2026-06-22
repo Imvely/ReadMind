@@ -16,6 +16,7 @@ java {
 repositories { mavenCentral() }
 
 val jjwtVersion = "0.12.6"
+val awsSdkVersion = "2.28.16"
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
@@ -32,6 +33,10 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:$jjwtVersion")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:$jjwtVersion")
 
+    // S3 호환 스토리지(MinIO/S3) presigned URL. s3 아티팩트에 presigner 포함.
+    implementation(platform("software.amazon.awssdk:bom:$awsSdkVersion"))
+    implementation("software.amazon.awssdk:s3")
+
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
@@ -42,4 +47,17 @@ kotlin {
     compilerOptions { freeCompilerArgs.addAll("-Xjsr305=strict") }
 }
 
-tasks.withType<Test> { useJUnitPlatform() }
+// 기본 test는 인프라 없이 도는 슬라이스/단위만. 인프라 의존 통합 테스트는 @Tag("integration")로
+// 분리하고 -PwithIntegration 플래그(또는 integrationTest 태스크)로만 실행한다.
+tasks.test {
+    useJUnitPlatform {
+        if (!project.hasProperty("withIntegration")) excludeTags("integration")
+    }
+}
+
+tasks.register<Test>("integrationTest") {
+    description = "인프라(Postgres 등)가 필요한 @Tag(\"integration\") 테스트만 실행"
+    group = "verification"
+    useJUnitPlatform { includeTags("integration") }
+    shouldRunAfter(tasks.test)
+}

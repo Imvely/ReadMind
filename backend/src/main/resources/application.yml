@@ -32,6 +32,19 @@ app:
     free-qa-per-month: ${FREE_QA_PER_MONTH:20}
     free-translate-per-month: ${FREE_TRANSLATE_PER_MONTH:10}
     free-storage-mb: ${FREE_STORAGE_MB:200}
+  s3:
+    endpoint: ${S3_ENDPOINT:http://localhost:9000}
+    bucket: ${S3_BUCKET:readmind}
+    access-key: ${S3_KEY:minioadmin}
+    secret-key: ${S3_SECRET:change-me-minio}
+    region: ${S3_REGION:us-east-1}
+    # MinIO는 path-style 필수(가상 호스트 스타일 미지원). 운영 S3는 false 가능.
+    path-style: ${S3_PATH_STYLE:true}
+    presign-ttl-seconds: ${S3_PRESIGN_TTL:900}
+  ai:
+    base-url: ${AI_SERVICE_URL:http://localhost:8000}
+    service-token: ${AI_SERVICE_TOKEN:}
+    parse-timeout-seconds: ${AI_PARSE_TIMEOUT:120}
 
 logging:
   level:

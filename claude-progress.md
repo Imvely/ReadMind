@@ -1,5 +1,6 @@
 # ReadMind 진행 로그
 > 세션 종료 시 CLAUDE.md §12.4에 따라 한 줄씩 추가.
+> (2026-06-22부터 .txt → .md 로 전환. .txt 는 사내 Fasoo DRM 이 걸려 평문이 깨지므로 .md 를 정본으로 사용.)
 
 [2026-06-15] 하네스 셋업 완료 (CLAUDE.md §12, feature_list 24항목, guard/verify hook).
 다음: Phase 0 첫 항목 infra-compose (docker-compose + .env.example).
@@ -64,7 +65,15 @@
 - 검증(라이브, ./gradlew test): 16개 통과(0 실패). JwtTokenProviderTest 7(발급·검증/type분리/위조/만료/손상, DB無 순수단위) + AuthControllerTest 9(@WebMvcTest 슬라이스+AuthService mock+실제 SecurityConfig 임포트: signup 200/검증400/중복409, login 200/자격401, refresh 200, me 토큰없음401·손상토큰401·해피200). DB/Flyway 없이 컨트롤러·보안필터 계층 검증.
 - 결정: §8 P0 "백엔드" 체크박스는 회원/로그인+업로드+위임캐싱을 한 줄로 묶어 be-doc-upload/be-ai-gate-cache 완료 시 함께 [x](이번엔 보류). 쿼터 차감은 be-quota-tiers 소관 — me는 티어별 한도만 노출(used=0).
 
+[2026-06-22] be-doc-upload 완료 (§4.2). 문서 업로드 파이프라인 — 직전 세션이 구현했으나 커밋·기록 누락 → 검증 후 마무리 커밋.
+- 구조: DocumentController(/documents) → DocumentService → DocumentRepository(JPA). create(presigned PUT URL 발급 + PENDING row) → complete(PARSING 전환 + AI /ai/parse 비동기 트리거) → list/get/content(presigned GET)/delete(tombstone). 응답 공통래퍼 ApiResponse.
+- 소유권(§3): 모든 조회/수정이 ownedOrThrow(findByIdAndUserIdAndDeletedAtIsNull) 경유. 미소유/삭제됨은 NOT_FOUND. list도 user_id 스코프.
+- 캐싱 철학(§3): complete 시 이미 READY면 재파싱 안 함. 포맷 가드 = Phase0 PDF만(SUPPORTED_FORMATS).
+- AI 격리(§5): document/ai/AiParseClient(AI_SERVICE_TOKEN→X-Service-Token), DocumentParseRunner(@Async, parse_status PENDING→PARSING→READY/FAILED). config/: S3Config+S3Properties(presigner, MinIO/S3), AiServiceProperties, AsyncConfig.
+- 검증(라이브, ./gradlew test --rerun-tasks): 단위 40개 통과(auth 16 + document 24: DocumentControllerTest 9·DocumentServiceTest 9·DocumentParseRunnerTest 3·DocumentStorageTest 3). ContextLoadSmokeTest는 @Tag("integration")으로 기본 제외(Postgres readmind_smoke 필요, ./gradlew integrationTest).
+- 진행 로그 .txt → .md 전환(사내 Fasoo DRM이 .txt 평문을 깨뜨림). CLAUDE.md §12.1/§12.4 참조도 .md로 갱신.
+
 [다음 세션 시작 시]
 - 막힘: 없음.
-- 제일 먼저: be-doc-upload (§4.2). /documents presigned URL → /documents/{id}/complete → AI /ai/parse 비동기 트리거, parse_status(PENDING→READY) 관리. 소유권(user_id) 검증. documents 테이블은 V1에 이미 있음. S3(MinIO) presigned PUT. AI 서비스 호출은 ai/ 모듈 격리(§5 규칙).
-- 참고: 빌드는 backend/에서 ./gradlew (wrapper 생성됨, gradle 8.11.1). 인프라 postgres/minio 필요 시 docker-compose up. AI_SERVICE_TOKEN(X-Service-Token)으로 ai-service 내부 호출 인증.
+- 제일 먼저: be-ai-gate-cache (§4.4, §3). /documents/{id}/summarize, /qa 위임 — **쿼터 게이트 → 캐시 조회 → AI 호출 → 캐시 저장** 순서 강제 + 소유권(user_id) 검증. AI 호출은 ai/ 모듈 격리. 요약 캐시는 summaries 테이블(V1에 있음). 쿼터 전면 시스템(usage_quotas 차감)은 be-quota-tiers 소관 — 여기선 게이트 골격 + FREE 한도 사전차단 정도.
+- 참고: 빌드는 backend/에서 ./gradlew (wrapper gradle 8.11.1). 통합 테스트/실DB는 docker-compose up. ai-service는 .venv(py3.14) + AI_SERVICE_TOKEN(X-Service-Token) 내부호출.

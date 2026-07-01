@@ -142,8 +142,13 @@
 - 앱 반영: (1) ai-service는 POSTGRES_URL(풀러,sslmode=require) 그대로 사용 — Neon 조회 성공. (2) backend는 compose SPRING_DATASOURCE_URL을 ${..:-로컬기본}으로 오버라이드 가능화 + .env에 SPRING_DATASOURCE_URL(Neon 다이렉트 JDBC,sslmode=require)/USERNAME/PASSWORD 추가(env가 application.yml POSTGRES_USER 기본을 덮음). backend 재기동→Neon 부팅+Flyway validate 통과+signup이 Neon users에 기록(id=1) 확인.
 - 운영: 마이그레이션용 flyway.conf(비밀 포함)는 스크래치패드에 만들고 사용 후 삭제, 커밋 안 함. backend 스키마 변경 시 앱 기동 Flyway가 다이렉트로 적용(락 OK). 로컬 postgres 컨테이너는 이제 미사용(compose엔 남아있음).
 
+[2026-07-01] AI서비스 HF Space 배포 + ai-parse-multi 완료.
+- HF Space 배포: dayeongim/readmind-ai(Docker SDK). Space repo 클론→app/·requirements 복사 + HF규칙 Dockerfile(7860/user uid1000/--chown=user/USER user) + README frontmatter(sdk:docker, app_port:7860). .env의 HF_TOKEN으로 git push(인증 전용, 파일/커밋/원격config에 토큰 미저장). 커밋 "deploy: 실제 AI서비스 배포". 로컬에서 동일 이미지 빌드·실행→/health·/docs·/openapi 200 검증. Space Public 전환(사용자). 점검: AI코드에 HF 라이브러리 전무(임베딩·요약 다 Gemini)→HF_TOKEN 런타임 불필요. /ai/*는 AI_SERVICE_TOKEN(Depends(verify_service_token))로 보호→공개돼도 Gemini 남용 불가. **TODO(메모리): HF Space /docs·/openapi 비공개 처리(추후).** 사내망에선 *.hf.space 프록시 차단이라 여기서 호출검증 불가(배포환경 밖에서).
+- ai-parse-multi 완료(commit da23dd4): parsers/txt.py(인코딩 순차)·docx.py(python-docx 문단+표)·epub.py(ebooklib 스파인별, nav제외, BeautifulSoup, 임시파일 경유) + _REGISTRY 등록. requirements에 ebooklib/beautifulsoup4/python-docx. backend SUPPORTED_FORMATS를 PDF+EPUB+TXT+DOCX로 확장. 검증: ruff+pytest 114(신규 11, 실제 docx/epub 픽스처 생성) + 재빌드한 컨테이너에서 파서 동작 스모크(supported: docx/epub/pdf/txt). 기존 미지원포맷 테스트는 hwp로 갱신.
+
 [다음 세션 시작 시]
-- 막힘: 없음. DB=Neon 전환 완료. Phase1 진행 중(be-annotations-crud, be-highlight-search 완료).
+- 막힘: 없음. Phase1 진행 중. 완료: be-annotations-crud, be-highlight-search, ai-parse-multi.
+- 다음 후보(Phase1, passes:false 위에서부터): web-reader-settings(M3, 리딩설정 다크/세피아·폰트·2단·자동스크롤 + epubjs 렌더) → ai-translate(M1, /ai/translate 원문대조 + 자동하이라이트 UI) → mobile-reader-sync(M4).
 - 다음 후보(Phase1, passes:false 위에서부터): ai-parse-multi(M1, EPUB/ebooklib·TXT·DOCX/python-docx 파서 추가, 디스패처 format→parser) → web-reader-settings(M3) → ai-translate(M1) → mobile-reader-sync(M4).
 - 운영: 스택 up 상태(docker compose --profile app, override로 ai 8000 미퍼블리시). 라이브 검증은 docker exec(MSYS_NO_PATHCONV=1). backend/ai 코드 바꾸면 해당 이미지 재빌드+force-recreate 필요. 브라우저 실사용은 R2 CORS 필요(현재 프리플라이트 403, 미반영/전파대기 — 사용 직전 재확인). Phase 0 개발(M1+M2+M3) + 배포 컨테이너화까지 완료. 남은 phase0 항목은 p0-beta-validate 하나(코드 아님: 실 배포+재사용률 계측).
 - 후보 A(p0-beta-validate): LLM_API_KEY 실값 세팅 → `docker compose --profile app up`으로 실 PDF 업로드→파싱→요약→QA 근거점프 브라우저 e2e 1회 → 커뮤니티 베타 배포 + 재사용률 지표(같은 유저가 다른 논문 또 업로드). 배포 대상/호스팅은 사용자 결정 필요.

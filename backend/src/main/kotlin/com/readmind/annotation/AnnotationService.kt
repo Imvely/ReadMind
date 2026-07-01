@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.readmind.common.ApiException
 import com.readmind.common.ErrorCode
 import com.readmind.document.DocumentRepository
+import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
@@ -72,6 +73,42 @@ class AnnotationService(
         h.deletedAt = Instant.now()
         h.version += 1
         highlights.save(h)
+    }
+
+    /**
+     * 전 문서 횡단 하이라이트 검색 (§4.3, 유료 핵심). 본인 소유만.
+     * q/tag 는 blank 면 무시(둘 다 없으면 전체 하이라이트). 결과에 문서 제목을 붙인다.
+     */
+    @Transactional(readOnly = true)
+    fun searchHighlights(
+        userId: Long,
+        q: String?,
+        tag: String?,
+        pageable: Pageable,
+    ): HighlightSearchResponse {
+        val page = highlights.search(
+            userId,
+            q?.trim()?.takeIf { it.isNotEmpty() },
+            tag?.trim()?.takeIf { it.isNotEmpty() },
+            pageable,
+        )
+        val titles = documents
+            .findByIdInAndUserId(page.content.map { it.documentId }.toSet(), userId)
+            .associate { it.id to it.title }
+        val items = page.content.map { h ->
+            HighlightSearchItem(
+                id = h.id!!,
+                documentId = h.documentId,
+                documentTitle = titles[h.documentId] ?: "",
+                pageNo = h.pageNo,
+                selectedText = h.selectedText,
+                color = h.color,
+                note = h.note,
+                tags = h.tags?.toList() ?: emptyList(),
+                createdAt = h.createdAt,
+            )
+        }
+        return HighlightSearchResponse(items, page.totalElements, page.hasNext())
     }
 
     // ── 메모 ──

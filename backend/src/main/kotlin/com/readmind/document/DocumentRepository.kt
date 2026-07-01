@@ -13,4 +13,7 @@ interface DocumentRepository : JpaRepository<Document, Long> {
     fun findByIdAndUserIdAndDeletedAtIsNull(id: Long, userId: Long): Document?
 
     fun findByUserIdAndDeletedAtIsNull(userId: Long, pageable: Pageable): Page<Document>
+
+    /** 여러 문서를 소유권 스코프로 일괄 조회(하이라이트 검색의 문서 제목 매핑용). */
+    fun findByIdInAndUserId(ids: Collection<Long>, userId: Long): List<Document>
 }

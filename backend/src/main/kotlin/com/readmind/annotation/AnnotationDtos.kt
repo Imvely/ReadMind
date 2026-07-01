@@ -77,6 +77,25 @@ data class BookmarkDto(
     val createdAt: Instant?,
 )
 
+// ── 하이라이트 통합 검색 (§4.3, 유료 핵심) ──
+data class HighlightSearchItem(
+    val id: Long,
+    val documentId: Long,
+    val documentTitle: String,
+    val pageNo: Int?,
+    val selectedText: String,
+    val color: String,
+    val note: String?,
+    val tags: List<String>,
+    val createdAt: Instant?,
+)
+
+data class HighlightSearchResponse(
+    val items: List<HighlightSearchItem>,
+    val totalElements: Long,
+    val hasNext: Boolean,
+)
+
 // ── 진행률 ──
 data class UpdateProgressRequest(
     @field:NotNull val location: JsonNode? = null,

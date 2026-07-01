@@ -10,6 +10,7 @@ import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.doReturn
+import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
@@ -142,6 +143,29 @@ class AnnotationServiceTest {
         ownDocument()
         whenever(progresses.findByUserIdAndDocumentId(USER, DOC)).doReturn(null)
         assertNull(service.getProgress(USER, DOC))
+    }
+
+    // ── 하이라이트 검색 ──
+    @Test
+    fun `searchHighlights - 문서 제목 매핑 + blank q,tag 는 null 로 전달`() {
+        val h = Highlight(
+            userId = USER, documentId = DOC, location = "{}", selectedText = "self-attention",
+            tags = arrayOf("nlp"),
+        ).also { it.id = 3L }
+        whenever(highlights.search(eq(USER), org.mockito.kotlin.isNull(), eq("nlp"), any()))
+            .doReturn(org.springframework.data.domain.PageImpl(listOf(h)))
+        whenever(documents.findByIdInAndUserId(any(), eq(USER)))
+            .doReturn(listOf(ownedDoc().also { it.title = "논문A" }))
+
+        // q 는 공백만 → null 로 정규화되어야 함(isNull 매칭).
+        val res = service.searchHighlights(
+            USER, "   ", "nlp",
+            org.springframework.data.domain.PageRequest.of(0, 20),
+        )
+
+        assertEquals(1, res.items.size)
+        assertEquals("논문A", res.items[0].documentTitle)
+        assertEquals(listOf("nlp"), res.items[0].tags)
     }
 
     @Test

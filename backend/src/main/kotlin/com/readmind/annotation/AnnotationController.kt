@@ -4,6 +4,7 @@ import com.readmind.common.ApiException
 import com.readmind.common.ApiResponse
 import com.readmind.common.ErrorCode
 import jakarta.validation.Valid
+import org.springframework.data.domain.PageRequest
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.PutMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 /**
@@ -54,6 +56,19 @@ class AnnotationController(
     ): ApiResponse<Unit> {
         service.deleteHighlight(requireUser(userId), hid)
         return ApiResponse.ok(Unit)
+    }
+
+    /** 전 문서 횡단 하이라이트 검색(§4.3, 유료 핵심). /highlights/{hid}(PATCH/DELETE)와 충돌 없음(GET). */
+    @GetMapping("/highlights/search")
+    fun searchHighlights(
+        @AuthenticationPrincipal userId: Long?,
+        @RequestParam(required = false) q: String?,
+        @RequestParam(required = false) tag: String?,
+        @RequestParam(defaultValue = "0") page: Int,
+        @RequestParam(defaultValue = "20") size: Int,
+    ): ApiResponse<HighlightSearchResponse> {
+        val pageable = PageRequest.of(page.coerceAtLeast(0), size.coerceIn(1, MAX_PAGE_SIZE))
+        return ApiResponse.ok(service.searchHighlights(requireUser(userId), q, tag, pageable))
     }
 
     // ── 메모 ──
@@ -132,4 +147,8 @@ class AnnotationController(
 
     private fun requireUser(userId: Long?): Long =
         userId ?: throw ApiException(ErrorCode.UNAUTHORIZED, "인증이 필요합니다.")
+
+    private companion object {
+        const val MAX_PAGE_SIZE = 100
+    }
 }

@@ -104,7 +104,7 @@
       "id": "be-highlight-search",
       "spec": "§4.3",
       "desc": "/highlights/search?q=&tag= — 전 문서 횡단 하이라이트 통합 검색(유료 핵심)",
-      "passes": false
+      "passes": true
     },
     {
       "phase": 1,

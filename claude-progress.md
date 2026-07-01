@@ -122,9 +122,18 @@
 - 운영 메모: 로컬 e2e는 docker exec(컨테이너가 CA신뢰+내부망 backend:8080)로 실행. Windows Git Bash에서 docker exec/cp 시 MSYS_NO_PATHCONV=1 필요(/tmp 경로 변환 방지). docker-compose.override.yml(gitignored)로 ai-service 8000 퍼블리시 제거(ocr-ingest-api 충돌).
 - 남은 것: 브라우저 실사용엔 R2 CORS 정책(CORP_CA_GUIDE.md STEP6) 필요(서버사이드 e2e엔 불필요). Phase0 AI 경로 전부 실동작 확인됨.
 
+[2026-07-01] be-annotations-crud 완료 (M2 Phase1 진입, active_phase 0→1). commit 1f84e29.
+- com.readmind.annotation 모듈(§4.3): Highlight/Note/Bookmark/ReadingProgress 엔티티 + 리포 4 + Service + Controller + DTO. Flyway 스키마에 이미 4테이블 완비라 마이그레이션 불필요(ddl-auto:none 매핑만).
+- 매핑: location=JSONB(@JdbcTypeCode JSON, raw 통과 포맷무관), tags=text[](@JdbcTypeCode ARRAY, Array<String>), 진행률=복합키(user_id,document_id) @IdClass upsert. 삭제=소프트(deleted_at 톰스톤)+version 증가(동기화 §4.5 대비).
+- 소유권(§3): documents/{id} 하위는 문서 소유권 선검증, /highlights|notes|bookmarks/{id}는 user_id 스코프 조회→미소유 NOT_FOUND.
+- 계약 갱신(§3 절차): 명세서 §4.3에 notes PATCH/DELETE·bookmarks DELETE·progress GET 추가 후 구현. search는 be-highlight-search 소관.
+- 검증: ./gradlew test 통과(AnnotationServiceTest 해피+소유권/유효성 실패). 라이브(실 Postgres, 컨테이너 exec): tags[]·jsonb 왕복, patch/version, 진행률 복합키 upsert 덮어쓰기, 소프트삭제 제외, location누락 400, 미소유 404 전부 OK.
+- 함정 메모: Kotlin KDoc 안에 "/*"(예: /documents/{id}/*)는 중첩주석으로 파싱돼 컴파일 깨짐 — 경로 예시는 "/*" 안 쓰게 서술.
+
 [다음 세션 시작 시]
-- 막힘: 없음. Gemini+R2+CA로 업로드→요약→QA 라이브 e2e까지 통과. 코드·컨테이너·provider 전부 실동작.
-- 후보: (a) 브라우저 실 e2e(R2 CORS 설정 후 https://localhost 로 사용자가 직접) 또는 (b) Phase1 진입 be-annotations-crud(§4.3, active_phase 0→1). Phase 0 개발(M1+M2+M3) + 배포 컨테이너화까지 완료. 남은 phase0 항목은 p0-beta-validate 하나(코드 아님: 실 배포+재사용률 계측).
+- 막힘: 없음. Phase1 active. be-annotations-crud 완료.
+- 다음 후보(Phase1, passes:false 위에서부터): be-highlight-search(§4.3 /highlights/search?q=&tag= 전문서 횡단, 유료 핵심) → ai-parse-multi(EPUB/TXT/DOCX 파서) → web-reader-settings → ai-translate → mobile-reader-sync.
+- 운영: 스택 up 상태(docker compose --profile app, override로 ai 8000 미퍼블리시). 라이브 검증은 docker exec(MSYS_NO_PATHCONV=1). backend/ai 코드 바꾸면 해당 이미지 재빌드+force-recreate 필요. 브라우저 실사용은 R2 CORS 필요(현재 프리플라이트 403, 미반영/전파대기 — 사용 직전 재확인). Phase 0 개발(M1+M2+M3) + 배포 컨테이너화까지 완료. 남은 phase0 항목은 p0-beta-validate 하나(코드 아님: 실 배포+재사용률 계측).
 - 후보 A(p0-beta-validate): LLM_API_KEY 실값 세팅 → `docker compose --profile app up`으로 실 PDF 업로드→파싱→요약→QA 근거점프 브라우저 e2e 1회 → 커뮤니티 베타 배포 + 재사용률 지표(같은 유저가 다른 논문 또 업로드). 배포 대상/호스팅은 사용자 결정 필요.
 - 후보 B(Phase1 진입, active_phase 0→1): be-annotations-crud(§4.3, 하이라이트/메모/북마크/진행률 CRUD, location JSONB, 소유권 검증).
 - 환경: 진행 로그는 .md. 웹 web/ npm run {typecheck,build,test}. 백엔드 backend/ ./gradlew. 풀스택 `docker compose --profile app up -d`(단, 호스트 8000 충돌 시 ai-service 포트 override). docker readmind-postgres:5432.

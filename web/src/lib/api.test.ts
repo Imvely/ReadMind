@@ -65,8 +65,8 @@ describe('apiRequest', () => {
 
     const err = await apiRequest('/documents/1/qa', { method: 'POST' }).catch((e) => e);
     expect(err).toBeInstanceOf(ApiClientError);
-    expect(err.code).toBe('QUOTA_EXCEEDED');
-    expect(err.status).toBe(403);
+    expect((err as ApiClientError).code).toBe('QUOTA_EXCEEDED');
+    expect((err as ApiClientError).status).toBe(403);
   });
 
   it('401이면 refresh로 새 토큰을 받고 원 요청을 1회 재시도한다', async () => {

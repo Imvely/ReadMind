@@ -105,8 +105,18 @@
 - 환경 이슈 기록: (1) 리포의 .env는 예전 통합테스트용 최소본(POSTGRES 3개만, JWT_SECRET 등 공란)이라 스모크용으로 JWT_SECRET/MinIO/S3/AI 키를 로컬 추가함(원본 백업 scratchpad/env.backup, POSTGRES creds=readmind/readmind/readmind 보존). 실사용 시 JWT_SECRET·LLM 키 실값 필요. (2) 호스트 8000을 타 프로젝트 컨테이너 ocr-ingest-api가 점유 → ai-service 퍼블리시만 8001로 옮기는 override 필요(backend↔ai는 내부망 ai-service:8000이라 무관).
 - AI 실경로(parse/summarize/qa)는 LLM_API_KEY(유료) 필요해 미검증 — p0-beta-validate에서 실 키로 e2e.
 
+[2026-07-01] Gemini provider(LLM+임베딩) + 배포 산출물 + 사내 CA. (p0-beta-validate 선행 계속)
+- 웹 컨테이너화: web/Dockerfile(루트 컨텍스트 멀티스테이지→nginx SPA) + deploy/Caddyfile(자동HTTPS, /api→backend·그외→web, same-origin이라 CORS無) + compose web/caddy 서비스. 검증(라이브): caddy 통해 /(SPA)·/api(실 JWT)·SPA폴백 정상. commit 835a74f.
+- 배포 컨테이너화(선행): ai-service/backend Dockerfile + compose SPRING_DATASOURCE_URL 매핑. 실 스택 up→Flyway V1 마이그레이션·signup/login/me 왕복 확인. commit f1ad9ae. (web-upload-viewer 커밋의 api.test tsc에러도 f6d6b82로 수정 — 테스트 작성 후 vitest만 돌리고 build 재확인 누락했던 것.)
+- Gemini LLMProvider(§5.7): providers/llm.py GeminiLLM(google-genai, 지연임포트) + _gemini.py 공용헬퍼(build_client·run_with_retry·resolve_vertex). json_mode→response_mime_type, Vertex Express 자동감지("AQ."키=vertexai). get_llm_provider에 gemini 분기 → 요약/QA 코드변경 없이 자동경유. commit 314ade9.
+- Gemini EmbeddingProvider: GeminiEmbedding(gemini-embedding-001, output_dimensionality=1024→vector(1024) 일치, L2정규화, 배치100). get_embedding_provider가 embedding_provider(미설정시 llm_provider 추종)=gemini 선택 → QA검색/parse 자동경유. commit 3e0f049.
+- 검증: ruff 통과 + pytest 102개(신규 Gemini LLM 12 + 임베딩 11, 페이크 client 주입 SDK/네트워크 무관). 프레시 컨테이너 실 google-genai 2.10.0으로 팩토리 오프라인 구성 확인.
+- **환경 해저드 2건(메모리 저장됨)**: (1) Fasoo DRM이 venv의 entry_points.txt 14개 암호화 → 로컬 pytest는 `PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYDANTIC_DISABLE_PLUGINS=1` 로 우회(Docker는 프레시 venv라 무관). (2) 사내 프록시 HTTPS MITM(self-signed CA) → 컨테이너에서 외부 HTTPS(R2·Gemini) 인증서검증 실패.
+- 사내 CA 대응: ai-service/Dockerfile이 certs/*.crt를 신뢰번들에 자동추가(certifi append + REQUESTS/AWS_CA_BUNDLE·SSL_CERT_FILE env). cert없으면 no-op(빌드 안깨짐, 검증됨). deploy/CORP_CA_GUIDE.md에 따라하기 런북(CA추출 PowerShell→override→재빌드→CA검증→브라우저 e2e→R2 CORS). commit 49a9deb.
+- 사용자 결정: LLM=Gemini 무료티어(gemini-2.5-flash, 키는 Vertex Express "AQ."형). 스토리지=Cloudflare R2(readmind-dev 버킷). B(CA주입)+라이브 e2e는 사용자가 직접 실행(가이드 제공, 나는 서버 호출 안 함).
+
 [다음 세션 시작 시]
-- 막힘: 없음. Phase 0 개발(M1+M2+M3) + 배포 컨테이너화까지 완료. 남은 phase0 항목은 p0-beta-validate 하나(코드 아님: 실 배포+재사용률 계측).
+- 막힘: 라이브 e2e는 사용자가 CORP_CA_GUIDE.md 따라 실행 중(사내 CA 주입 필요). 코드/컨테이너는 준비 완료. Phase 0 개발(M1+M2+M3) + 배포 컨테이너화까지 완료. 남은 phase0 항목은 p0-beta-validate 하나(코드 아님: 실 배포+재사용률 계측).
 - 후보 A(p0-beta-validate): LLM_API_KEY 실값 세팅 → `docker compose --profile app up`으로 실 PDF 업로드→파싱→요약→QA 근거점프 브라우저 e2e 1회 → 커뮤니티 베타 배포 + 재사용률 지표(같은 유저가 다른 논문 또 업로드). 배포 대상/호스팅은 사용자 결정 필요.
 - 후보 B(Phase1 진입, active_phase 0→1): be-annotations-crud(§4.3, 하이라이트/메모/북마크/진행률 CRUD, location JSONB, 소유권 검증).
 - 환경: 진행 로그는 .md. 웹 web/ npm run {typecheck,build,test}. 백엔드 backend/ ./gradlew. 풀스택 `docker compose --profile app up -d`(단, 호스트 8000 충돌 시 ai-service 포트 override). docker readmind-postgres:5432.

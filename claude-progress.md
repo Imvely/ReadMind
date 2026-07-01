@@ -146,9 +146,17 @@
 - HF Space 배포: dayeongim/readmind-ai(Docker SDK). Space repo 클론→app/·requirements 복사 + HF규칙 Dockerfile(7860/user uid1000/--chown=user/USER user) + README frontmatter(sdk:docker, app_port:7860). .env의 HF_TOKEN으로 git push(인증 전용, 파일/커밋/원격config에 토큰 미저장). 커밋 "deploy: 실제 AI서비스 배포". 로컬에서 동일 이미지 빌드·실행→/health·/docs·/openapi 200 검증. Space Public 전환(사용자). 점검: AI코드에 HF 라이브러리 전무(임베딩·요약 다 Gemini)→HF_TOKEN 런타임 불필요. /ai/*는 AI_SERVICE_TOKEN(Depends(verify_service_token))로 보호→공개돼도 Gemini 남용 불가. **TODO(메모리): HF Space /docs·/openapi 비공개 처리(추후).** 사내망에선 *.hf.space 프록시 차단이라 여기서 호출검증 불가(배포환경 밖에서).
 - ai-parse-multi 완료(commit da23dd4): parsers/txt.py(인코딩 순차)·docx.py(python-docx 문단+표)·epub.py(ebooklib 스파인별, nav제외, BeautifulSoup, 임시파일 경유) + _REGISTRY 등록. requirements에 ebooklib/beautifulsoup4/python-docx. backend SUPPORTED_FORMATS를 PDF+EPUB+TXT+DOCX로 확장. 검증: ruff+pytest 114(신규 11, 실제 docx/epub 픽스처 생성) + 재빌드한 컨테이너에서 파서 동작 스모크(supported: docx/epub/pdf/txt). 기존 미지원포맷 테스트는 hwp로 갱신.
 
+[2026-07-01] ai-translate 완료 (M1+M2, 원문대조 번역). commit 2fb615c.
+- AI(ai-service): schemas/translate.py + translate/{prompts,service,errors}.py + api/translate.py → main 등록. LLM provider(Gemini) 경유 충실 번역(의미 가감 없음, 번역문만), 언어코드→이름 매핑, 20k자 가드, json_mode 미사용. 응답 {translated, sourceExcerpt(원문), targetLang}(원문대조). TranslateError→422, ProviderError→502.
+- backend: AiContentClient.translate + AiService.translate(소유권→쿼터게이트→AI→차감, 캐시 없음-임의텍스트, READY 불필요) + AiController POST /documents/{id}/translate + Translate DTO. 쿼터는 기존 QuotaKind.TRANSLATE 재사용(이미 완비돼 있었음).
+- 계약(§3): 명세서 §4.4 translate를 Phase1 선택텍스트 기반 {text,targetLang}→{translated,sourceExcerpt,targetLang}로 명시.
+- 검증: ai-service ruff+pytest 123(신규 test_translate 9), backend ./gradlew test(AiServiceTest translate 3: 해피·쿼터초과 미호출미차감·미소유404). **라이브 e2e(실 Gemini, Neon)**: 자체 유저+문서 생성→번역 200("Transformers process sequences in parallel using self-attention.")·원문대조·빈텍스트422·미소유404 확인.
+- 미완(별도): desc의 "자동 하이라이트 추천 UI 연동"은 web(M3) 작업 — suggest-highlights AI 엔드포인트는 이미 존재(ai-suggest-highlights), 리더 UI에서 소비만 남음. 번역 API 계약(§5/§4.4)은 완료.
+- 운영 메모: backend가 Neon 사용 이후 로컬 postgres의 예전 유저/문서(e2e@)는 Neon에 없음 → e2e 스크립트는 자체 signup+문서생성으로.
+
 [다음 세션 시작 시]
-- 막힘: 없음. Phase1 진행 중. 완료: be-annotations-crud, be-highlight-search, ai-parse-multi.
-- 다음 후보(Phase1, passes:false 위에서부터): web-reader-settings(M3, 리딩설정 다크/세피아·폰트·2단·자동스크롤 + epubjs 렌더) → ai-translate(M1, /ai/translate 원문대조 + 자동하이라이트 UI) → mobile-reader-sync(M4).
+- 막힘: 없음. Phase1 진행 중. 완료: be-annotations-crud, be-highlight-search, ai-parse-multi, ai-translate.
+- 다음 후보(Phase1, passes:false): web-reader-settings(M3, 리딩설정 다크/세피아·폰트·2단·자동스크롤 + epubjs 렌더 + 번역/하이라이트추천 패널 UI 연동) → mobile-reader-sync(M4, RN 앱+증분동기화).
 - 다음 후보(Phase1, passes:false 위에서부터): ai-parse-multi(M1, EPUB/ebooklib·TXT·DOCX/python-docx 파서 추가, 디스패처 format→parser) → web-reader-settings(M3) → ai-translate(M1) → mobile-reader-sync(M4).
 - 운영: 스택 up 상태(docker compose --profile app, override로 ai 8000 미퍼블리시). 라이브 검증은 docker exec(MSYS_NO_PATHCONV=1). backend/ai 코드 바꾸면 해당 이미지 재빌드+force-recreate 필요. 브라우저 실사용은 R2 CORS 필요(현재 프리플라이트 403, 미반영/전파대기 — 사용 직전 재확인). Phase 0 개발(M1+M2+M3) + 배포 컨테이너화까지 완료. 남은 phase0 항목은 p0-beta-validate 하나(코드 아님: 실 배포+재사용률 계측).
 - 후보 A(p0-beta-validate): LLM_API_KEY 실값 세팅 → `docker compose --profile app up`으로 실 PDF 업로드→파싱→요약→QA 근거점프 브라우저 e2e 1회 → 커뮤니티 베타 배포 + 재사용률 지표(같은 유저가 다른 논문 또 업로드). 배포 대상/호스팅은 사용자 결정 필요.

@@ -130,9 +130,14 @@
 - 검증: ./gradlew test 통과(AnnotationServiceTest 해피+소유권/유효성 실패). 라이브(실 Postgres, 컨테이너 exec): tags[]·jsonb 왕복, patch/version, 진행률 복합키 upsert 덮어쓰기, 소프트삭제 제외, location누락 400, 미소유 404 전부 OK.
 - 함정 메모: Kotlin KDoc 안에 "/*"(예: /documents/{id}/*)는 중첩주석으로 파싱돼 컴파일 깨짐 — 경로 예시는 "/*" 안 쓰게 서술.
 
+[2026-07-01] be-highlight-search 완료 (M2 Phase1, 유료 핵심). commit ce161a9.
+- HighlightRepository.search 네이티브 쿼리: selected_text/note ILIKE(대소문자무시) + tag ANY(tags) 배열매칭 + documents 조인(소유권·soft-delete). q/tag 는 CAST(:x AS text) IS NULL 가드로 선택적(둘 다 없으면 전체·사용자스코프). 페이지네이션 + 결과에 documentTitle.
+- DocumentRepository.findByIdInAndUserId(소유권 스코프 제목 일괄) 추가. Service.searchHighlights(blank→null, 제목매핑). Controller GET /highlights/search(q,tag,page,size) — GET이라 /highlights/{hid} PATCH/DELETE와 충돌 없음.
+- 검증: ./gradlew test(검색 케이스). 라이브(실 Postgres): q 대소문자무시, tag ANY, q+tag AND, 미매칭 0, 다른 사용자 0(격리), documentTitle 채워짐 전부 OK.
+
 [다음 세션 시작 시]
-- 막힘: 없음. Phase1 active. be-annotations-crud 완료.
-- 다음 후보(Phase1, passes:false 위에서부터): be-highlight-search(§4.3 /highlights/search?q=&tag= 전문서 횡단, 유료 핵심) → ai-parse-multi(EPUB/TXT/DOCX 파서) → web-reader-settings → ai-translate → mobile-reader-sync.
+- 막힘: 없음. Phase1 진행 중(be-annotations-crud, be-highlight-search 완료).
+- 다음 후보(Phase1, passes:false 위에서부터): ai-parse-multi(M1, EPUB/ebooklib·TXT·DOCX/python-docx 파서 추가, 디스패처 format→parser) → web-reader-settings(M3) → ai-translate(M1) → mobile-reader-sync(M4).
 - 운영: 스택 up 상태(docker compose --profile app, override로 ai 8000 미퍼블리시). 라이브 검증은 docker exec(MSYS_NO_PATHCONV=1). backend/ai 코드 바꾸면 해당 이미지 재빌드+force-recreate 필요. 브라우저 실사용은 R2 CORS 필요(현재 프리플라이트 403, 미반영/전파대기 — 사용 직전 재확인). Phase 0 개발(M1+M2+M3) + 배포 컨테이너화까지 완료. 남은 phase0 항목은 p0-beta-validate 하나(코드 아님: 실 배포+재사용률 계측).
 - 후보 A(p0-beta-validate): LLM_API_KEY 실값 세팅 → `docker compose --profile app up`으로 실 PDF 업로드→파싱→요약→QA 근거점프 브라우저 e2e 1회 → 커뮤니티 베타 배포 + 재사용률 지표(같은 유저가 다른 논문 또 업로드). 배포 대상/호스팅은 사용자 결정 필요.
 - 후보 B(Phase1 진입, active_phase 0→1): be-annotations-crud(§4.3, 하이라이트/메모/북마크/진행률 CRUD, location JSONB, 소유권 검증).

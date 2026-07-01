@@ -115,8 +115,16 @@
 - 사내 CA 대응: ai-service/Dockerfile이 certs/*.crt를 신뢰번들에 자동추가(certifi append + REQUESTS/AWS_CA_BUNDLE·SSL_CERT_FILE env). cert없으면 no-op(빌드 안깨짐, 검증됨). deploy/CORP_CA_GUIDE.md에 따라하기 런북(CA추출 PowerShell→override→재빌드→CA검증→브라우저 e2e→R2 CORS). commit 49a9deb.
 - 사용자 결정: LLM=Gemini 무료티어(gemini-2.5-flash, 키는 Vertex Express "AQ."형). 스토리지=Cloudflare R2(readmind-dev 버킷). B(CA주입)+라이브 e2e는 사용자가 직접 실행(가이드 제공, 나는 서버 호출 안 함).
 
+[2026-07-01] 라이브 e2e 통과 (Gemini 무료티어 + Cloudflare R2 + 사내 CA). commit beb5f06.
+- 사내 CA: Windows 신뢰저장소에서 프록시 CA 추출(CN=lotte.net, O=LDCC) → ai-service/certs/corp-root.crt → 재빌드 후 컨테이너에서 google/Gemini/R2 TLS 전부 통과 확인.
+- 실측으로 통합 버그 2개 발견·수정: (1) AI Studio 키가 "AQ."로 시작할 수 있어 접두사로 Vertex/Developer 구분 불가 → resolve_vertex 기본을 Developer API로(자동감지 제거). AQ.키를 Vertex로 잘못 보내 403(project API 미활성) 나던 것 해결. (2) backend→ai 호출 400 "Unsupported upgrade request": JDK HttpClient 기본 HTTP/2 h2c 업그레이드를 uvicorn이 거부 → config/AiHttp.kt로 AI 호출을 HTTP/1.1 고정(AiParseClient/AiContentClient).
+- **전체 e2e 성공**: 업로드→R2 PUT 200→parse READY(6p, Gemini 임베딩 1024d)→summarize 200(Gemini PAPER 한국어 요약)→qa 200(근거 sources 포함; 무관 질문은 NO_EVIDENCE 강등=환각방지 정상). ai-service ruff+pytest 103, backend ./gradlew test 통과.
+- 운영 메모: 로컬 e2e는 docker exec(컨테이너가 CA신뢰+내부망 backend:8080)로 실행. Windows Git Bash에서 docker exec/cp 시 MSYS_NO_PATHCONV=1 필요(/tmp 경로 변환 방지). docker-compose.override.yml(gitignored)로 ai-service 8000 퍼블리시 제거(ocr-ingest-api 충돌).
+- 남은 것: 브라우저 실사용엔 R2 CORS 정책(CORP_CA_GUIDE.md STEP6) 필요(서버사이드 e2e엔 불필요). Phase0 AI 경로 전부 실동작 확인됨.
+
 [다음 세션 시작 시]
-- 막힘: 라이브 e2e는 사용자가 CORP_CA_GUIDE.md 따라 실행 중(사내 CA 주입 필요). 코드/컨테이너는 준비 완료. Phase 0 개발(M1+M2+M3) + 배포 컨테이너화까지 완료. 남은 phase0 항목은 p0-beta-validate 하나(코드 아님: 실 배포+재사용률 계측).
+- 막힘: 없음. Gemini+R2+CA로 업로드→요약→QA 라이브 e2e까지 통과. 코드·컨테이너·provider 전부 실동작.
+- 후보: (a) 브라우저 실 e2e(R2 CORS 설정 후 https://localhost 로 사용자가 직접) 또는 (b) Phase1 진입 be-annotations-crud(§4.3, active_phase 0→1). Phase 0 개발(M1+M2+M3) + 배포 컨테이너화까지 완료. 남은 phase0 항목은 p0-beta-validate 하나(코드 아님: 실 배포+재사용률 계측).
 - 후보 A(p0-beta-validate): LLM_API_KEY 실값 세팅 → `docker compose --profile app up`으로 실 PDF 업로드→파싱→요약→QA 근거점프 브라우저 e2e 1회 → 커뮤니티 베타 배포 + 재사용률 지표(같은 유저가 다른 논문 또 업로드). 배포 대상/호스팅은 사용자 결정 필요.
 - 후보 B(Phase1 진입, active_phase 0→1): be-annotations-crud(§4.3, 하이라이트/메모/북마크/진행률 CRUD, location JSONB, 소유권 검증).
 - 환경: 진행 로그는 .md. 웹 web/ npm run {typecheck,build,test}. 백엔드 backend/ ./gradlew. 풀스택 `docker compose --profile app up -d`(단, 호스트 8000 충돌 시 ai-service 포트 override). docker readmind-postgres:5432.

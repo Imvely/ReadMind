@@ -1,0 +1,17 @@
+# ReadMind 엣지 리버스 프록시(Caddy). 자동 HTTPS + same-origin 라우팅(CORS 불필요).
+#   /api/*  → backend:8080  (Spring context-path 가 /api/v1 이라 경로 재작성 없음)
+#   그 외    → web:80        (정적 SPA)
+#
+# APP_DOMAIN 을 실제 도메인으로 주면 Let's Encrypt 인증서를 자동 발급한다.
+# 미설정 시 localhost(로컬 확인용, Caddy 내부 CA).
+{$APP_DOMAIN:localhost} {
+	encode gzip
+
+	handle /api/* {
+		reverse_proxy backend:8080
+	}
+
+	handle {
+		reverse_proxy web:80
+	}
+}

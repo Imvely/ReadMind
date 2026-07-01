@@ -1,0 +1,15 @@
+# 루트 빌드 컨텍스트(web 이미지)용 제외 목록 — 컨텍스트 최소화.
+# ai-service/backend 는 각자 자체 컨텍스트(./ai-service, ./backend)와 자체 .dockerignore 를 쓴다.
+.git
+**/node_modules
+**/dist
+backend/build
+backend/.gradle
+ai-service/.venv
+ai-service/venv
+**/__pycache__
+*.log
+# 시크릿은 절대 컨텍스트에 포함하지 않는다(§3).
+.env
+.env.*
+!.env.example

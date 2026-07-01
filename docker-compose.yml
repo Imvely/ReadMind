@@ -111,7 +111,40 @@ services:
       - "8080:8080"
     restart: unless-stopped
 
+  # 웹 정적 빌드(nginx). @readmind/shared 참조 때문에 컨텍스트는 레포 루트.
+  web:
+    profiles: ["app"]
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    container_name: readmind-web
+    restart: unless-stopped
+
+  # 엣지 리버스 프록시 + 자동 HTTPS. 유일한 공개 진입점(80/443).
+  # APP_DOMAIN 을 실제 도메인으로 주면 Let's Encrypt 발급.
+  caddy:
+    profiles: ["app"]
+    image: caddy:2-alpine
+    container_name: readmind-caddy
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+    depends_on:
+      web:
+        condition: service_started
+      backend:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    restart: unless-stopped
+
 volumes:
   pgdata:
   redisdata:
   miniodata:
+  caddydata:
+  caddyconfig:

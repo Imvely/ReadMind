@@ -96,10 +96,11 @@ services:
     container_name: readmind-backend
     env_file: .env
     environment:
-      # 컨테이너 네트워크에서는 DB 호스트가 서비스명 postgres, 포트는 컨테이너 내부 5432(퍼블리시 포트와 무관).
-      # application.yml 은 JDBC 형식 SPRING_DATASOURCE_URL 을 읽는데 .env 의 POSTGRES_URL(psycopg 형식)과 형식/키가 달라
-      # 여기서 명시적으로 구성한다. username/password 는 .env 의 POSTGRES_USER/PASSWORD 를 그대로 사용.
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-readmind}
+      # 기본은 로컬 컨테이너 postgres. 클라우드 DB(Neon 등)를 쓰려면 .env 에 SPRING_DATASOURCE_URL
+      # (JDBC 형식, 예: jdbc:postgresql://<host>/<db>?sslmode=require) 과 SPRING_DATASOURCE_USERNAME/
+      # PASSWORD 를 넣으면 여기 값이 그걸로 덮인다(env_file 우선). application.yml 이 JDBC 형식을 읽고,
+      # .env 의 POSTGRES_URL(psycopg 형식)은 ai-service 전용이라 형식/키가 달라 backend 는 별도로 준다.
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/${POSTGRES_DB:-readmind}}
     depends_on:
       postgres:
         condition: service_healthy

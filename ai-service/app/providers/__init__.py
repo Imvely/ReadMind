@@ -7,6 +7,7 @@ LLM/임베딩 접근을 Protocol로 추상화하고, OpenAI 호환 HTTP 구현�
 
 from app.providers.embedding import (
     EmbeddingProvider,
+    GeminiEmbedding,
     OpenAICompatEmbedding,
     get_embedding_provider,
 )
@@ -20,6 +21,7 @@ from app.providers.llm import (
 
 __all__ = [
     "EmbeddingProvider",
+    "GeminiEmbedding",
     "GeminiLLM",
     "LLMProvider",
     "OpenAICompatEmbedding",

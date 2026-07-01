@@ -40,6 +40,8 @@ class Settings(BaseSettings):
     gemini_location: str = "global"
 
     # ── 임베딩 ──
+    # 미설정(None)이면 llm_provider 를 따른다(보통 한 벤더로 통일).
+    embedding_provider: Literal["commercial", "selfhosted", "gemini"] | None = None
     embedding_model: str = ""
     embedding_api_base: str = ""  # 미설정 시 llm_api_base 재사용
     embedding_api_key: str = ""  # 미설정 시 llm_api_key 재사용

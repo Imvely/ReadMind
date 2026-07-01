@@ -12,7 +12,7 @@ from app.providers import (
     ProviderError,
     get_llm_provider,
 )
-from app.providers.llm import _resolve_vertex
+from app.providers._gemini import resolve_vertex
 
 
 class _Resp:
@@ -118,13 +118,13 @@ def test_retry_exhausted_raises():
 
 # ── Vertex 자동감지 ──
 def test_resolve_vertex_detects_express_key():
-    assert _resolve_vertex(None, "AQ.abc") is True
-    assert _resolve_vertex(None, "AIzaSyABC") is False
+    assert resolve_vertex(None, "AQ.abc") is True
+    assert resolve_vertex(None, "AIzaSyABC") is False
 
 
 def test_resolve_vertex_explicit_overrides():
-    assert _resolve_vertex(True, "AIzaSyABC") is True
-    assert _resolve_vertex(False, "AQ.abc") is False
+    assert resolve_vertex(True, "AIzaSyABC") is True
+    assert resolve_vertex(False, "AQ.abc") is False
 
 
 # ── 팩토리(환경변수 선택) ──

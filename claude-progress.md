@@ -87,8 +87,16 @@
 
 [M2 Phase0 백엔드 완료] be-auth-jwt + be-doc-upload + be-ai-gate-cache. 다음은 M3 웹.
 
+[2026-07-01] web-upload-viewer 완료 (§6.1, M3 진입). 웹 MVP — 직전 세션이 스캐폴드를 커밋·기록 없이 남겨둠(be-auth/be-doc-upload와 동일 패턴) → 갈아엎지 않고 검증+테스트 보강으로 마무리.
+- 모노레포: 루트 package.json(workspaces: packages/*, web). packages/shared = API 계약 타입 SSOT(§3) — ApiResponse<T> 래퍼, Auth/Document/Summarize/Qa DTO 전부 백엔드 Kotlin DTO(camelCase)와 1:1. 웹은 중복 정의 안 함.
+- web/ 구조: lib/api.ts(공통 래퍼 언랩 + ApiClientError code 보존 + 401→refresh 1회 재시도 + presigned PUT) + lib/tokens.ts(localStorage). api/{auth,documents,ai}.ts, hooks/{documents,ai}.ts(TanStack Query — 서버상태, useEffect 패칭 없음), store/auth.ts(Zustand, 부트스트랩만 useEffect). pages/{Login,Library,Reader}. features/reader/{PdfViewer(pdf.js 어댑터 격리),SummaryPanel,QaPanel,pdf.ts}.
+- 핵심 요구 충족: Q&A sources[{page,snippet}] → 칩 클릭 → ReaderPage의 pdfRef.scrollToPage(page) → 해당 페이지 scrollIntoView + 1.6s 강조. PdfViewer는 forwardRef+useImperativeHandle(scrollToPage). 렌더러 어댑터 격리로 epub 교체 가능(§5).
+- 쿼터(§3): QUOTA_EXCEEDED code를 QaPanel/SummaryPanel이 업셀 안내로 분기. page null 근거는 점프 비활성.
+- 막힘 해결: vite.config.ts의 node:url 타입 누락 → @types/node 설치 + tsconfig types에 "node" 추가. 타입체크 통과.
+- 검증(라이브): npm run typecheck(shared+web strict 통과) + npm run build(tsc+vite build 성공, dist 산출) + npm run test(vitest 15개 통과). 테스트 신규 3파일: api.test.ts 7(성공언랩/Authz헤더/에러code매핑/QUOTA_EXCEEDED/401→refresh재시도·새토큰검증/refresh없음시무재시도/noAuthRetry) + QaPanel.test.tsx 4(답변+근거렌더·근거클릭→onJumpToPage/page null 비활성/쿼터업셀/빈질문차단) + SummaryPanel.test.tsx 4(PAPER구조렌더/PAPER mutate/캐시배지/쿼터업셀). fetch/hook 모킹으로 실 백엔드 없이.
+- 미검증(다음): 브라우저 라이브 e2e(실 백엔드+AI+실 PDF 업로드→파싱→요약→QA점프)는 스택 기동 필요해 이번 세션 범위 밖. 단위/컴포넌트 레벨은 전부 그린.
+
 [다음 세션 시작 시]
 - 막힘: 없음.
-- 제일 먼저: web-upload-viewer (§6.1, M3). 웹 업로드 화면 + pdf.js 뷰어 + 우측 요약/Q&A 패널. Q&A sources 클릭 시 본문 위치 점프. React18+TS(strict)+Vite+Tailwind+TanStack Query+Zustand+pdf.js. 서버상태=TanStack Query(useEffect 패칭 금지). web/ 디렉터리 신규.
-- 참고: 백엔드 API는 /api/v1(context-path). 인증 Bearer JWT. 요약 POST /documents/{id}/summarize {style}, QA POST /documents/{id}/qa {sessionId?,question}→{answer,sources:[{page,snippet}]}. 업로드는 POST /documents→presigned PUT→POST /documents/{id}/complete.
-- 환경: 진행 로그는 .md(.txt는 Fasoo DRM 손상). 빌드 backend/ ./gradlew, 통합은 integrationTest(readmind_smoke DB). docker readmind-postgres:5432 가동 중.
+- 제일 먼저: p0-beta-validate (§8 P0, M0). 대학원 커뮤니티 베타 배포 + 재사용률 계측. 또는 그 전에 브라우저 라이브 e2e 스모크(docker 스택+ai-service+backend 띄우고 실 PDF 1건 업로드→요약→QA 근거점프 수동 확인) 1회 권장.
+- 환경: 진행 로그는 .md(.txt는 Fasoo DRM 손상). 웹 빌드 web/ npm run {typecheck,build,test}. 백엔드 backend/ ./gradlew, 통합 integrationTest(readmind_smoke DB). docker readmind-postgres:5432. 개발 시 web은 /api → localhost:8080 프록시(vite.config.ts).

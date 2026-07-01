@@ -524,7 +524,7 @@ readmind/
 - [x] **AI 서비스**: `/ai/parse`(PDF만 먼저) + `/ai/summarize`(PAPER) + `/ai/suggest-highlights` + `/ai/qa`
 - [x] `LLMProvider`/`EmbeddingProvider` 인터페이스 + 1개 구현체(환경변수로 모델 선택)
 - [x] **백엔드**: 회원/로그인(JWT), 문서 업로드(presigned), 파싱 트리거, `/summarize` `/qa` 위임 + 캐싱
-- [ ] **웹**: 업로드 화면 + pdf.js 뷰어 + 우측 요약/Q&A 패널. Q&A sources 클릭 점프
+- [x] **웹**: 업로드 화면 + pdf.js 뷰어 + 우측 요약/Q&A 패널. Q&A sources 클릭 점프
 - [ ] 대학원 커뮤니티 베타 배포. **검증 지표: 재사용(같은 사람이 다른 논문을 또 올리는가)**
 
 ### Phase 1 — 리더 + 동기화 (2~3개월)

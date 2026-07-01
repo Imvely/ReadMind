@@ -1,0 +1,16 @@
+{
+  "name": "readmind",
+  "private": true,
+  "version": "0.0.0",
+  "description": "ReadMind 모노레포 루트 — 웹/공유 타입 워크스페이스 (CLAUDE.md §11).",
+  "workspaces": [
+    "packages/*",
+    "web"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace web",
+    "build": "npm run build --workspace web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  }
+}

@@ -80,7 +80,7 @@
       "id": "web-upload-viewer",
       "spec": "§6.1",
       "desc": "웹: 업로드 화면 + pdf.js 뷰어 + 우측 요약/Q&A 패널. Q&A sources 클릭 시 본문 위치 점프",
-      "passes": false
+      "passes": true
     },
     {
       "phase": 0,

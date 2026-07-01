@@ -315,11 +315,15 @@ CREATE INDEX idx_flashcards_due ON flashcards(user_id, due_at) WHERE deleted_at 
 | 메서드 | 경로 | 설명 |
 |---|---|---|
 | GET/POST | `/documents/{id}/highlights` | 목록 / 생성 |
-| PATCH/DELETE | `/highlights/{hid}` | 수정 / 삭제 |
-| GET/POST | `/documents/{id}/notes` | 메모 |
-| GET/POST | `/documents/{id}/bookmarks` | 북마크 |
-| PUT | `/documents/{id}/progress` | 읽기 진행률 저장 |
+| PATCH/DELETE | `/highlights/{hid}` | 수정(색·메모·태그) / 삭제(소프트) |
+| GET/POST | `/documents/{id}/notes` | 메모 목록 / 생성 |
+| PATCH/DELETE | `/notes/{nid}` | 메모 수정(본문·페이지) / 삭제(소프트) |
+| GET/POST | `/documents/{id}/bookmarks` | 북마크 목록 / 생성 |
+| DELETE | `/bookmarks/{bid}` | 북마크 삭제(소프트) |
+| GET/PUT | `/documents/{id}/progress` | 읽기 진행률 조회 / 저장(upsert) |
 | GET | `/highlights/search?q=&tag=` | **하이라이트 통합 검색(유료 핵심)** — 전 문서 횡단 |
+
+> §4.3 갱신(2026-07-01, be-annotations-crud): 메모/북마크에 수정·삭제, 진행률에 조회를 추가해 전 리소스 CRUD 일관화. 삭제는 모두 소프트 삭제(deleted_at 톰스톤) + version 증가로 동기화(§4.5)에 대비. 삭제는 소유자 본인만(소유권 검증).
 
 **하이라이트 생성 req 예시**
 ```json

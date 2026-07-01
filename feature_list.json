@@ -1,6 +1,6 @@
 {
   "_comment": "ReadMind 빌드 체크리스트. 명세서(docs/ReadMind_개발명세서_BuildSpec.md) §8과 1:1 대응. CLAUDE.md §12 워크플로에 따라 passes:false 중 위에서부터 하나씩만 작업하고, 완료 기준(§12.3) 충족 시에만 passes:true로 변경.",
-  "active_phase": 0,
+  "active_phase": 1,
   "features": [
     {
       "phase": 0,
@@ -96,7 +96,7 @@
       "id": "be-annotations-crud",
       "spec": "§4.3, §3",
       "desc": "하이라이트/메모/북마크/진행률 CRUD. location JSONB(PDF rects / EPUB cfi). 소유권 검증 필수",
-      "passes": false
+      "passes": true
     },
     {
       "phase": 1,

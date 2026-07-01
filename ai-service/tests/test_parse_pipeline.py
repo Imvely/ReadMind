@@ -35,7 +35,7 @@ def test_happy_path_stores_chunks_and_returns_counts():
 def test_unsupported_format_propagates():
     storage, repo, emb = FakeStorage(b"x"), FakeRepo(), FakeEmbedder()
     with pytest.raises(UnsupportedFormatError):
-        run_parse(_req("docx"), storage=storage, repo=repo, embedder=emb)
+        run_parse(_req("hwp"), storage=storage, repo=repo, embedder=emb)
     assert repo.saved == {}
 
 

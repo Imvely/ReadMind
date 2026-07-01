@@ -8,8 +8,11 @@ fastapi>=0.115
 uvicorn[standard]>=0.30
 # LLM provider (Gemini). provider 추상화 경유 — 벤더 직접 결합 아님(CLAUDE.md §10).
 google-genai>=1.0
-# 파싱/청킹 (PDF 우선; EPUB/DOCX 등은 ai-parse-multi에서 추가)
+# 파싱/청킹 (멀티포맷: PDF/EPUB/TXT/DOCX)
 PyMuPDF>=1.24
+ebooklib>=0.18
+beautifulsoup4>=4.12
+python-docx>=1.1
 langdetect>=1.0.9
 # 영속화 (S3 호환 스토리지 + pgvector)
 boto3>=1.34

@@ -9,11 +9,17 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from app.parsers.base import ParsedDoc, ParserError, UnsupportedFormatError
+from app.parsers.docx import parse_docx
+from app.parsers.epub import parse_epub
 from app.parsers.pdf import parse_pdf
+from app.parsers.txt import parse_txt
 
-# format(소문자) → 파서 함수(bytes -> ParsedDoc)
+# format(소문자) → 파서 함수(bytes -> ParsedDoc). 새 포맷은 여기 등록만.
 _REGISTRY: dict[str, Callable[[bytes], ParsedDoc]] = {
     "pdf": parse_pdf,
+    "epub": parse_epub,
+    "txt": parse_txt,
+    "docx": parse_docx,
 }
 
 

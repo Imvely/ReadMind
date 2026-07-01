@@ -112,7 +112,7 @@
       "id": "ai-parse-multi",
       "spec": "§5.2",
       "desc": "EPUB(ebooklib)/TXT/DOCX(python-docx) 파서 추가. 디스패처 패턴(format→parser)",
-      "passes": false
+      "passes": true
     },
     {
       "phase": 1,

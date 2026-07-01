@@ -26,7 +26,7 @@ def test_parse_pdf_case_insensitive_format():
 
 def test_unsupported_format_raises():
     with pytest.raises(UnsupportedFormatError):
-        parse_document("epub", b"whatever")
+        parse_document("hwp", b"whatever")  # hwp는 아직 미지원(P3)
 
 
 def test_corrupt_pdf_raises():

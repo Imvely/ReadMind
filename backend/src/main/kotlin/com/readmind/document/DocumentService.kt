@@ -102,7 +102,7 @@ class DocumentService(
     )
 
     private companion object {
-        // Phase 0은 PDF만(AI 파서도 pdf만). 새 포맷은 ai-parse-multi에서 확장.
-        val SUPPORTED_FORMATS = setOf("PDF")
+        // AI 파서 디스패처가 지원하는 포맷(ai-parse-multi). HWP/MOBI 등은 P3.
+        val SUPPORTED_FORMATS = setOf("PDF", "EPUB", "TXT", "DOCX")
     }
 }

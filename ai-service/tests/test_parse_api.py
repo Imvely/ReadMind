@@ -49,7 +49,7 @@ def test_parse_unsupported_format_returns_415():
     client, _ = _client(b"x")
     resp = client.post(
         "/ai/parse",
-        json={"documentId": 1, "storageKey": "k.docx", "format": "docx"},
+        json={"documentId": 1, "storageKey": "k.hwp", "format": "hwp"},
     )
     assert resp.status_code == 415
 

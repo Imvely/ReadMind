@@ -135,8 +135,15 @@
 - DocumentRepository.findByIdInAndUserId(소유권 스코프 제목 일괄) 추가. Service.searchHighlights(blank→null, 제목매핑). Controller GET /highlights/search(q,tag,page,size) — GET이라 /highlights/{hid} PATCH/DELETE와 충돌 없음.
 - 검증: ./gradlew test(검색 케이스). 라이브(실 Postgres): q 대소문자무시, tag ANY, q+tag AND, 미매칭 0, 다른 사용자 0(격리), documentTitle 채워짐 전부 OK.
 
+[2026-07-01] DB를 Neon(클라우드 Postgres)으로 전환 + V1 마이그레이션 적용. commit f5cd230.
+- 사용자 결정: DB=Neon. .env POSTGRES_URL 에 Neon 접속문자열(풀러, sslmode=require), pgvector는 Neon SQL Editor에서 CREATE EXTENSION 완료.
+- V1__init.sql 적용: flyway/flyway 도커 CLI 로 Neon '다이렉트' 엔드포인트(-pooler 제거)에 migrate. 다이렉트를 쓴 이유=Flyway 세션 어드바이저리 락이 PgBouncer 트랜잭션 풀러와 안 맞음. 결과 now at v1, pgvector 기존이라 skip.
+- 검증: Neon에 14개 테이블 + document_chunks.embedding=vector(1024) + pgvector 확인. sslmode=require는 암호화만/인증서 미검증이라 사내 MITM CA 없이 접속됨(그래서 사용자가 강조).
+- 앱 반영: (1) ai-service는 POSTGRES_URL(풀러,sslmode=require) 그대로 사용 — Neon 조회 성공. (2) backend는 compose SPRING_DATASOURCE_URL을 ${..:-로컬기본}으로 오버라이드 가능화 + .env에 SPRING_DATASOURCE_URL(Neon 다이렉트 JDBC,sslmode=require)/USERNAME/PASSWORD 추가(env가 application.yml POSTGRES_USER 기본을 덮음). backend 재기동→Neon 부팅+Flyway validate 통과+signup이 Neon users에 기록(id=1) 확인.
+- 운영: 마이그레이션용 flyway.conf(비밀 포함)는 스크래치패드에 만들고 사용 후 삭제, 커밋 안 함. backend 스키마 변경 시 앱 기동 Flyway가 다이렉트로 적용(락 OK). 로컬 postgres 컨테이너는 이제 미사용(compose엔 남아있음).
+
 [다음 세션 시작 시]
-- 막힘: 없음. Phase1 진행 중(be-annotations-crud, be-highlight-search 완료).
+- 막힘: 없음. DB=Neon 전환 완료. Phase1 진행 중(be-annotations-crud, be-highlight-search 완료).
 - 다음 후보(Phase1, passes:false 위에서부터): ai-parse-multi(M1, EPUB/ebooklib·TXT·DOCX/python-docx 파서 추가, 디스패처 format→parser) → web-reader-settings(M3) → ai-translate(M1) → mobile-reader-sync(M4).
 - 운영: 스택 up 상태(docker compose --profile app, override로 ai 8000 미퍼블리시). 라이브 검증은 docker exec(MSYS_NO_PATHCONV=1). backend/ai 코드 바꾸면 해당 이미지 재빌드+force-recreate 필요. 브라우저 실사용은 R2 CORS 필요(현재 프리플라이트 403, 미반영/전파대기 — 사용 직전 재확인). Phase 0 개발(M1+M2+M3) + 배포 컨테이너화까지 완료. 남은 phase0 항목은 p0-beta-validate 하나(코드 아님: 실 배포+재사용률 계측).
 - 후보 A(p0-beta-validate): LLM_API_KEY 실값 세팅 → `docker compose --profile app up`으로 실 PDF 업로드→파싱→요약→QA 근거점프 브라우저 e2e 1회 → 커뮤니티 베타 배포 + 재사용률 지표(같은 유저가 다른 논문 또 업로드). 배포 대상/호스팅은 사용자 결정 필요.

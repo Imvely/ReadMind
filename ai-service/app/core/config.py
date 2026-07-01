@@ -33,10 +33,10 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
 
     # ── Gemini(google-genai) 전용 옵션 ──
-    # gemini_vertexai 미설정(None)이면 API 키 접두사로 자동 감지:
-    #   "AQ." → Vertex AI Express 모드(vertexai=True), "AIza..." → Developer API.
+    # 기본 Developer API(AI Studio). 키 접두사(AIza/AQ.)로는 구분 불가 → 감지 안 함.
+    # Vertex 는 gemini_vertexai=true(Express) 또는 gemini_project(서비스계정) 로 명시.
     gemini_vertexai: bool | None = None
-    gemini_project: str = ""  # Vertex 비-express 모드에서만 사용(express는 키에 포함)
+    gemini_project: str = ""  # 지정 시 Vertex(비-express) 모드
     gemini_location: str = "global"
 
     # ── 임베딩 ──

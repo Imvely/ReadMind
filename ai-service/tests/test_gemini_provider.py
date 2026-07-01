@@ -116,15 +116,20 @@ def test_retry_exhausted_raises():
         llm.complete("s", "u")
 
 
-# ── Vertex 자동감지 ──
-def test_resolve_vertex_detects_express_key():
-    assert resolve_vertex(None, "AQ.abc") is True
-    assert resolve_vertex(None, "AIzaSyABC") is False
+# ── Vertex 판별(기본 Developer API) ──
+def test_resolve_vertex_defaults_to_developer_api():
+    # 키 접두사로 감지하지 않는다(AQ. 도 AI Studio 키일 수 있음) → 기본 Developer.
+    assert resolve_vertex(None) is False
+    assert resolve_vertex(None, "") is False
+
+
+def test_resolve_vertex_project_implies_vertex():
+    assert resolve_vertex(None, "my-gcp-project") is True
 
 
 def test_resolve_vertex_explicit_overrides():
-    assert resolve_vertex(True, "AIzaSyABC") is True
-    assert resolve_vertex(False, "AQ.abc") is False
+    assert resolve_vertex(True) is True
+    assert resolve_vertex(False, "my-gcp-project") is False
 
 
 # ── 팩토리(환경변수 선택) ──

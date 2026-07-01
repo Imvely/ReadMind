@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.readmind.common.ApiException
 import com.readmind.common.ErrorCode
 import com.readmind.config.AiServiceProperties
+import com.readmind.config.http11RequestFactory
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
@@ -43,6 +44,7 @@ class RestClientAiContentClient(
 
     private val client: RestClient = RestClient.builder()
         .baseUrl(props.baseUrl)
+        .requestFactory(http11RequestFactory())
         .build()
 
     override fun summarize(documentId: Long, style: String): JsonNode {

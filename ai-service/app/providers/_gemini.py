@@ -17,14 +17,16 @@ TRANSIENT_CODES = frozenset({429, 500, 502, 503, 504})
 T = TypeVar("T")
 
 
-def resolve_vertex(use_vertex: bool | None, api_key: str) -> bool:
-    """Vertex 사용 여부. 명시값 우선, 없으면 키 접두사로 감지.
+def resolve_vertex(use_vertex: bool | None, project: str = "") -> bool:
+    """Vertex 사용 여부. 명시값 우선, 없으면 project 지정 시에만 Vertex.
 
-    Vertex AI Express 키는 "AQ." 로 시작, Developer API 키는 "AIza" 로 시작한다.
+    기본은 Developer API. AI Studio 키는 "AIza" 뿐 아니라 "AQ." 로 시작하는 것도 있어
+    키 접두사로 Vertex/Developer 를 구분할 수 없다 → 기본 Developer, Vertex 는
+    GEMINI_VERTEXAI=true(Express) 또는 GEMINI_PROJECT(서비스계정) 로 명시한다.
     """
     if use_vertex is not None:
         return use_vertex
-    return api_key.startswith("AQ.")
+    return bool(project)
 
 
 def _looks_transient(exc: Exception) -> bool:
@@ -55,16 +57,12 @@ def build_client(
         ) from exc
 
     http_options = {"timeout": int(timeout * 1000)}  # google-genai 는 ms 단위
-    if resolve_vertex(use_vertex, api_key):
-        # Express 모드: 프로젝트/리전은 API 키에 인코딩됨(project/location 불필요).
-        kwargs: dict[str, object] = {
-            "vertexai": True,
-            "api_key": api_key,
-            "http_options": http_options,
-        }
-        if project:  # 비-express Vertex(서비스계정 등)일 때만.
+    if resolve_vertex(use_vertex, project):
+        kwargs: dict[str, object] = {"vertexai": True, "http_options": http_options}
+        if project:  # 비-express Vertex(서비스계정 등).
             kwargs.update(project=project, location=location)
-            kwargs.pop("api_key")
+        else:  # Express 모드: 프로젝트/리전은 API 키에 인코딩됨.
+            kwargs["api_key"] = api_key
         return genai.Client(**kwargs)
     return genai.Client(api_key=api_key, http_options=http_options)
 

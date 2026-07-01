@@ -1,6 +1,7 @@
 package com.readmind.document.ai
 
 import com.readmind.config.AiServiceProperties
+import com.readmind.config.http11RequestFactory
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestClient
@@ -28,6 +29,7 @@ class RestClientAiParseClient(
 
     private val client: RestClient = RestClient.builder()
         .baseUrl(props.baseUrl)
+        .requestFactory(http11RequestFactory())
         .build()
 
     override fun parse(documentId: Long, storageKey: String, format: String): ParseResult {

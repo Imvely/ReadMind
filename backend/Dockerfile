@@ -1,5 +1,6 @@
-# ReadMind 백엔드 (M2, Spring Boot/Kotlin). docker compose --profile app 로 기동. 포트 8080.
+# ReadMind 백엔드 (M2, Spring Boot/Kotlin). 로컬 compose + Google Cloud Run 공용.
 # 멀티스테이지: gradle 로 bootJar 빌드 → 슬림 JRE 런타임.
+# 포트는 application.yml 의 server.port=${PORT:8080} 로 바인딩 — Cloud Run 이 주입하는 PORT 를 존중.
 
 # ── 1) 빌드 스테이지 ──
 FROM gradle:8.11.1-jdk21 AS build

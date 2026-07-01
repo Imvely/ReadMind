@@ -18,6 +18,8 @@ spring:
     locations: classpath:db/migration
 
 server:
+  # Cloud Run 등은 PORT 환경변수로 포트를 주입한다. 없으면 8080(로컬/compose).
+  port: ${PORT:8080}
   servlet:
     context-path: /api/v1
 

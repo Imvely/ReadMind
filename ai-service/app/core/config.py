@@ -26,10 +26,18 @@ class Settings(BaseSettings):
     )
 
     # ── LLM (provider 추상화) ──
-    llm_provider: Literal["commercial", "selfhosted"] = "commercial"
+    # commercial/selfhosted = OpenAI 호환 HTTP(api_base). gemini = google-genai SDK.
+    llm_provider: Literal["commercial", "selfhosted", "gemini"] = "commercial"
     llm_model: str = ""
     llm_api_base: str = ""
     llm_api_key: str = ""
+
+    # ── Gemini(google-genai) 전용 옵션 ──
+    # gemini_vertexai 미설정(None)이면 API 키 접두사로 자동 감지:
+    #   "AQ." → Vertex AI Express 모드(vertexai=True), "AIza..." → Developer API.
+    gemini_vertexai: bool | None = None
+    gemini_project: str = ""  # Vertex 비-express 모드에서만 사용(express는 키에 포함)
+    gemini_location: str = "global"
 
     # ── 임베딩 ──
     embedding_model: str = ""

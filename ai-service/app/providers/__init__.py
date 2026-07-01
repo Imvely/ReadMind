@@ -11,10 +11,16 @@ from app.providers.embedding import (
     get_embedding_provider,
 )
 from app.providers.errors import ProviderConfigError, ProviderError
-from app.providers.llm import LLMProvider, OpenAICompatLLM, get_llm_provider
+from app.providers.llm import (
+    GeminiLLM,
+    LLMProvider,
+    OpenAICompatLLM,
+    get_llm_provider,
+)
 
 __all__ = [
     "EmbeddingProvider",
+    "GeminiLLM",
     "LLMProvider",
     "OpenAICompatEmbedding",
     "OpenAICompatLLM",

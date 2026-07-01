@@ -15,6 +15,23 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
 
+# ── 사내 프록시(HTTPS MITM) 대응: 루트 CA 신뢰 → 외부 HTTPS(Gemini/R2) 호출 가능 ──
+# certs/ 에 사내 루트 CA(.crt, PEM/Base64)를 두고 재빌드하면 자동 반영. 없으면 no-op.
+# google-genai(httpx)는 certifi 번들 파일을 직접 읽으므로 그 파일에 append,
+# boto3(botocore)/requests 는 CA 번들 env 로 지정(각자 CA 소스가 달라 전부 커버).
+COPY certs/ /tmp/corp-certs/
+RUN CERTIFI="$(python -c 'import certifi; print(certifi.where())')" && \
+    if ls /tmp/corp-certs/*.crt >/dev/null 2>&1; then \
+        cat /tmp/corp-certs/*.crt >> "$CERTIFI" && \
+        echo "corp CA appended → $CERTIFI"; \
+    else \
+        echo "no corp CA in certs/ — skip (외부 HTTPS가 사내망에서 막힐 수 있음)"; \
+    fi && \
+    ln -sf "$CERTIFI" /etc/ssl/certifi-bundle.pem
+ENV REQUESTS_CA_BUNDLE=/etc/ssl/certifi-bundle.pem \
+    AWS_CA_BUNDLE=/etc/ssl/certifi-bundle.pem \
+    SSL_CERT_FILE=/etc/ssl/certifi-bundle.pem
+
 # 애플리케이션 소스.
 COPY app ./app
 

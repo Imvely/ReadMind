@@ -19,6 +19,15 @@ out/
 .data/
 volumes/
 
+# 로컬 전용 compose override(포트 remap 등, 머신별)
+docker-compose.override.yml
+docker-compose.override.yaml
+
+# 사내 루트 CA 인증서(공개 인증서지만 내부 인프라 정보 노출 방지 — 커밋 금지)
+**/certs/*.crt
+**/certs/*.pem
+**/certs/*.cer
+
 # IDE / OS
 .idea/
 .vscode/

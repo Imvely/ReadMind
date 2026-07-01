@@ -337,12 +337,14 @@ CREATE INDEX idx_flashcards_due ON flashcards(user_id, due_at) WHERE deleted_at 
 | 메서드 | 경로 | 티어 | 설명 |
 |---|---|---|---|
 | POST | `/documents/{id}/summarize` | FREE(소량)/PRO | `{scope:"DOCUMENT|SECTION|PAGE_RANGE", scopeRef, style:"PAPER|PLAIN"}` → 구조화 요약(캐시) |
-| POST | `/documents/{id}/translate` | FREE(소량)/PRO | `{scope, text?, targetLang:"ko"}` → 번역(원문대조) |
+| POST | `/documents/{id}/translate` | FREE(소량)/PRO | `{text, targetLang:"ko"}` → `{translated, sourceExcerpt, targetLang}` 번역(원문대조) |
 | POST | `/documents/{id}/qa` | FREE(소량)/PRO | `{sessionId?, question}` → `{answer, sources:[{page,snippet}]}` |
 | POST | `/documents/{id}/suggest-highlights` | PRO | AI 핵심 문장 추천 → 후보 하이라이트 배열 |
 | POST | `/documents/{id}/flashcards/generate` | PRO | 하이라이트·요약 기반 카드 자동 생성 |
 | GET | `/flashcards/due` | PRO | 오늘 복습할 카드(FSRS) |
 | POST | `/flashcards/{fid}/review` | PRO | `{rating:"AGAIN|HARD|GOOD|EASY"}` → 다음 due 계산 |
+
+> §4.4 translate 갱신(2026-07-01, ai-translate): Phase 1 번역은 **선택 텍스트 기반** `{text, targetLang}` → `{translated, sourceExcerpt, targetLang}`(원문대조). 문서 전체/scope 번역은 추후. 캐시 없음(임의 텍스트), 쿼터는 TRANSLATE 차감(AI 호출 성공 시).
 
 **쿼터 게이트**: FREE가 한도 초과 시 `403 QUOTA_EXCEEDED` + 업그레이드 유도 메시지. Spring이 `usage_quotas`로 사전 차단(AI 서비스 호출 전).
 

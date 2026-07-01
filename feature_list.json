@@ -128,7 +128,7 @@
       "id": "ai-translate",
       "spec": "§4.4, §5",
       "desc": "/ai/translate 번역(원문대조) + 자동 하이라이트 추천 UI 연동",
-      "passes": false
+      "passes": true
     },
     {
       "phase": 1,

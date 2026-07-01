@@ -27,6 +27,13 @@ data class AiQaResult(
 /** 대화 이력 한 줄 (role=user|assistant). */
 data class AiQaTurn(val role: String, val content: String)
 
+/** AI /ai/translate 응답 (원문대조). */
+data class AiTranslateResult(
+    val translated: String,
+    val sourceExcerpt: String,
+    val targetLang: String,
+)
+
 /**
  * 요약/QA AI 호출 포트 (명세서 §5.3/§5.4). 동기 HTTP ↔ 큐 교체 가능하도록 인터페이스로 격리.
  * AI 서비스 오류는 ErrorCode.INTERNAL(502 상당)로 매핑하지 않고 도메인 예외로 위임 — 여기선
@@ -35,6 +42,7 @@ data class AiQaTurn(val role: String, val content: String)
 interface AiContentClient {
     fun summarize(documentId: Long, style: String): JsonNode
     fun qa(documentId: Long, question: String, history: List<AiQaTurn>): AiQaResult
+    fun translate(text: String, targetLang: String): AiTranslateResult
 }
 
 @Component
@@ -59,6 +67,11 @@ class RestClientAiContentClient(
             "history" to history.map { mapOf("role" to it.role, "content" to it.content) },
         )
         return post("/ai/qa", body, AiQaResult::class.java)
+    }
+
+    override fun translate(text: String, targetLang: String): AiTranslateResult {
+        val body = mapOf("text" to text, "targetLang" to targetLang)
+        return post("/ai/translate", body, AiTranslateResult::class.java)
     }
 
     private fun <T> post(uri: String, body: Map<String, Any?>, type: Class<T>): T =

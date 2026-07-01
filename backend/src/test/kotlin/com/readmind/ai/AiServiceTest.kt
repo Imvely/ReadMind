@@ -204,4 +204,48 @@ class AiServiceTest {
         assertEquals("user", historyCaptor.firstValue[0].role) // 소문자로 정규화
         assertEquals("이전질문", historyCaptor.firstValue[0].content)
     }
+
+    // ── 번역 ──
+
+    @Test
+    fun `translate 해피 - 소유권+쿼터 후 AI 호출, 원문대조 반환, 차감`() {
+        whenever(documents.get(userId, docId)).doReturn(readyDoc())
+        whenever(ai.translate("이것은 테스트다.", "en"))
+            .doReturn(AiTranslateResult("This is a test.", "이것은 테스트다.", "en"))
+
+        val res = service.translate(
+            userId, docId, TranslateRequest(text = "이것은 테스트다.", targetLang = "en"),
+        )
+
+        assertEquals("This is a test.", res.translated)
+        assertEquals("이것은 테스트다.", res.sourceExcerpt) // 원문대조
+        assertEquals("en", res.targetLang)
+        verify(quota).record(userId, QuotaKind.TRANSLATE)
+    }
+
+    @Test
+    fun `translate 쿼터 초과 - QUOTA_EXCEEDED, AI 미호출·미차감`() {
+        whenever(documents.get(userId, docId)).doReturn(readyDoc())
+        doThrow(ApiException(ErrorCode.QUOTA_EXCEEDED, "한도 초과"))
+            .whenever(quota).ensureWithin(userId, QuotaKind.TRANSLATE)
+
+        val ex = assertThrows<ApiException> {
+            service.translate(userId, docId, TranslateRequest(text = "hi"))
+        }
+        assertEquals(ErrorCode.QUOTA_EXCEEDED, ex.code)
+        verify(ai, never()).translate(any(), any())
+        verify(quota, never()).record(any(), eq(QuotaKind.TRANSLATE))
+    }
+
+    @Test
+    fun `translate 미소유 문서 - NOT_FOUND, AI 미호출`() {
+        whenever(documents.get(userId, docId))
+            .doThrow(ApiException(ErrorCode.NOT_FOUND, "문서를 찾을 수 없습니다."))
+
+        val ex = assertThrows<ApiException> {
+            service.translate(userId, docId, TranslateRequest(text = "hi"))
+        }
+        assertEquals(ErrorCode.NOT_FOUND, ex.code)
+        verify(ai, never()).translate(any(), any())
+    }
 }

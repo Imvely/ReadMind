@@ -43,3 +43,18 @@ data class QaResponse(
     /** 근거 — 항상 포함(근거 없는 답변 금지, §3). 근거 0개면 AI가 "찾을 수 없음"으로 강등한다. */
     val sources: List<QaSourceDto>,
 )
+
+// ── 번역 (명세서 §4.4) ──
+/** Phase 1 번역은 선택 텍스트 기반: {text, targetLang}. 문서 전체 번역(scope)은 추후. */
+data class TranslateRequest(
+    @field:NotBlank(message = "번역할 텍스트는 필수입니다.")
+    val text: String,
+    val targetLang: String = "ko",
+)
+
+/** 원문대조: 번역문 + 원문(sourceExcerpt)을 함께 반환. */
+data class TranslateResponse(
+    val translated: String,
+    val sourceExcerpt: String,
+    val targetLang: String,
+)

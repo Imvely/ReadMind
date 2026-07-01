@@ -95,6 +95,28 @@ class AiService(
         )
     }
 
+    /**
+     * 선택 텍스트 번역 위임 (명세서 §4.4). 원문대조 응답.
+     * 순서: 소유권 검증 → 쿼터 게이트 → AI 호출 → 쿼터 차감. 번역은 임의 텍스트라 캐시 없음.
+     * 파싱 완료(READY)는 불필요 — 전달된 선택 텍스트를 번역하므로.
+     */
+    @Transactional
+    fun translate(userId: Long, documentId: Long, req: TranslateRequest): TranslateResponse {
+        documents.get(userId, documentId) // 소유권 검증(미소유 시 NOT_FOUND).
+        quota.ensureWithin(userId, QuotaKind.TRANSLATE)
+
+        val lang = req.targetLang.trim().ifBlank { "ko" }
+        val result = ai.translate(req.text, lang)
+
+        quota.record(userId, QuotaKind.TRANSLATE)
+
+        return TranslateResponse(
+            translated = result.translated,
+            sourceExcerpt = result.sourceExcerpt,
+            targetLang = result.targetLang,
+        )
+    }
+
     // ── 내부 ──
 
     /** 소유권 + 파싱 완료 검증. 미소유=NOT_FOUND(DocumentService), 미완료=VALIDATION. */

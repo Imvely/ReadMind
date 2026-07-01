@@ -37,6 +37,14 @@ class AiController(
     ): ApiResponse<QaResponse> =
         ApiResponse.ok(service.qa(requireUser(userId), id, req))
 
+    @PostMapping("/translate")
+    fun translate(
+        @AuthenticationPrincipal userId: Long?,
+        @PathVariable id: Long,
+        @Valid @RequestBody req: TranslateRequest,
+    ): ApiResponse<TranslateResponse> =
+        ApiResponse.ok(service.translate(requireUser(userId), id, req))
+
     private fun requireUser(userId: Long?): Long =
         userId ?: throw ApiException(ErrorCode.UNAUTHORIZED, "인증이 필요합니다.")
 }

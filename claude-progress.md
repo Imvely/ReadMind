@@ -96,7 +96,17 @@
 - 검증(라이브): npm run typecheck(shared+web strict 통과) + npm run build(tsc+vite build 성공, dist 산출) + npm run test(vitest 15개 통과). 테스트 신규 3파일: api.test.ts 7(성공언랩/Authz헤더/에러code매핑/QUOTA_EXCEEDED/401→refresh재시도·새토큰검증/refresh없음시무재시도/noAuthRetry) + QaPanel.test.tsx 4(답변+근거렌더·근거클릭→onJumpToPage/page null 비활성/쿼터업셀/빈질문차단) + SummaryPanel.test.tsx 4(PAPER구조렌더/PAPER mutate/캐시배지/쿼터업셀). fetch/hook 모킹으로 실 백엔드 없이.
 - 미검증(다음): 브라우저 라이브 e2e(실 백엔드+AI+실 PDF 업로드→파싱→요약→QA점프)는 스택 기동 필요해 이번 세션 범위 밖. 단위/컴포넌트 레벨은 전부 그린.
 
+[2026-07-01] 배포 컨테이너화 완료 (p0-beta-validate 선행). commit f1ad9ae.
+- compose가 build: ./ai-service, ./backend(app 프로파일)를 참조하는데 정작 Dockerfile이 없어 배포 불가였음 → 두 Dockerfile 신규.
+- ai-service/Dockerfile: python:3.12-slim + requirements 캐시 레이어 + 비루트(uid1001) + `uvicorn app.main:app :8000`. .dockerignore로 .venv/tests/캐시 제외.
+- backend/Dockerfile: 멀티스테이지(gradle:8.11.1-jdk21 `bootJar -x test` → eclipse-temurin:21-jre, 비루트) :8080. .dockerignore로 build/.gradle 제외. clean bootJar은 boot jar 1개만 생성(-plain.jar은 풀빌드 잔재) → COPY glob 안전 확인.
+- 계약/설정: application.yml은 SPRING_DATASOURCE_URL(JDBC)을 읽는데 .env엔 POSTGRES_URL(psycopg형)만 있어 키/형식 불일치 → compose backend에 environment로 `SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}` 명시 매핑. username/password는 POSTGRES_USER/PASSWORD 재사용. ai-service는 POSTGRES_URL/S3_ENDPOINT(둘 다 컨테이너 서비스명)를 직접 읽어 그대로 정합.
+- 검증(라이브, Docker Desktop): `docker compose --profile app build` 성공(ai 506MB / be 589MB). up 후 5개 컨테이너 healthy(postgres/redis/minio/ai/backend). backend가 실 readmind DB에 Flyway V1 마이그레이션 성공 + Tomcat :8080 기동. ai /health={status:ok}. signup→login→me(quota FREE 한도 노출)→중복 signup=EMAIL_EXISTS 왕복 정상. (콜드스타트 직후 첫 요청 1회 401은 이후 재현 안 됨, 무해.)
+- 환경 이슈 기록: (1) 리포의 .env는 예전 통합테스트용 최소본(POSTGRES 3개만, JWT_SECRET 등 공란)이라 스모크용으로 JWT_SECRET/MinIO/S3/AI 키를 로컬 추가함(원본 백업 scratchpad/env.backup, POSTGRES creds=readmind/readmind/readmind 보존). 실사용 시 JWT_SECRET·LLM 키 실값 필요. (2) 호스트 8000을 타 프로젝트 컨테이너 ocr-ingest-api가 점유 → ai-service 퍼블리시만 8001로 옮기는 override 필요(backend↔ai는 내부망 ai-service:8000이라 무관).
+- AI 실경로(parse/summarize/qa)는 LLM_API_KEY(유료) 필요해 미검증 — p0-beta-validate에서 실 키로 e2e.
+
 [다음 세션 시작 시]
-- 막힘: 없음.
-- 제일 먼저: p0-beta-validate (§8 P0, M0). 대학원 커뮤니티 베타 배포 + 재사용률 계측. 또는 그 전에 브라우저 라이브 e2e 스모크(docker 스택+ai-service+backend 띄우고 실 PDF 1건 업로드→요약→QA 근거점프 수동 확인) 1회 권장.
-- 환경: 진행 로그는 .md(.txt는 Fasoo DRM 손상). 웹 빌드 web/ npm run {typecheck,build,test}. 백엔드 backend/ ./gradlew, 통합 integrationTest(readmind_smoke DB). docker readmind-postgres:5432. 개발 시 web은 /api → localhost:8080 프록시(vite.config.ts).
+- 막힘: 없음. Phase 0 개발(M1+M2+M3) + 배포 컨테이너화까지 완료. 남은 phase0 항목은 p0-beta-validate 하나(코드 아님: 실 배포+재사용률 계측).
+- 후보 A(p0-beta-validate): LLM_API_KEY 실값 세팅 → `docker compose --profile app up`으로 실 PDF 업로드→파싱→요약→QA 근거점프 브라우저 e2e 1회 → 커뮤니티 베타 배포 + 재사용률 지표(같은 유저가 다른 논문 또 업로드). 배포 대상/호스팅은 사용자 결정 필요.
+- 후보 B(Phase1 진입, active_phase 0→1): be-annotations-crud(§4.3, 하이라이트/메모/북마크/진행률 CRUD, location JSONB, 소유권 검증).
+- 환경: 진행 로그는 .md. 웹 web/ npm run {typecheck,build,test}. 백엔드 backend/ ./gradlew. 풀스택 `docker compose --profile app up -d`(단, 호스트 8000 충돌 시 ai-service 포트 override). docker readmind-postgres:5432.

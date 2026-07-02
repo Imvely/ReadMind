@@ -29,8 +29,11 @@ UPLOAD=$(echo "$CREATE" | jq -r '.data.uploadUrl')
 [ "$DOCID" != "null" ] || { echo "!! create 실패: $CREATE"; exit 1; }
 echo "documentId=$DOCID"
 
-# 3) presigned R2 PUT (Content-Type 미바인딩 → 그대로 업로드)
-printf '%s' "$TXT" | curl -s -o /dev/null -w "R2 PUT -> %{http_code}\n" --upload-file - "$UPLOAD"
+# 3) presigned R2 PUT — 반드시 파일로(=Content-Length 설정). stdin 파이프는 chunked라 S3/R2가 411 거부.
+TMP=$(mktemp); printf '%s' "$TXT" > "$TMP"
+PUTCODE=$(curl -s -o /dev/null -w '%{http_code}' --upload-file "$TMP" "$UPLOAD"); rm -f "$TMP"
+echo "R2 PUT -> $PUTCODE"
+[ "$PUTCODE" = "200" ] || { echo "!! R2 업로드 실패($PUTCODE) — presigned/네트워크 확인. 파싱 진행 안 함."; exit 1; }
 
 # 4) complete → 백엔드가 Cloud Run에서 HF Space /ai/parse 를 @Async 로 트리거
 curl -s -X POST "$BASE/documents/$DOCID/complete" -H "$AUTH" | jq -c '.data'

@@ -154,6 +154,15 @@
 - 미완(별도): desc의 "자동 하이라이트 추천 UI 연동"은 web(M3) 작업 — suggest-highlights AI 엔드포인트는 이미 존재(ai-suggest-highlights), 리더 UI에서 소비만 남음. 번역 API 계약(§5/§4.4)은 완료.
 - 운영 메모: backend가 Neon 사용 이후 로컬 postgres의 예전 유저/문서(e2e@)는 Neon에 없음 → e2e 스크립트는 자체 signup+문서생성으로.
 
+[2026-07-02] Cloud Run 백엔드 배포 완료 (p0-beta-validate 인프라). 코드 아님 — 배포/운영.
+- `gcloud run deploy readmind-backend --source=./backend`(Cloud Build가 backend/Dockerfile로 빌드→Artifact Registry→배포) → 프로젝트 gen-lang-client-0471683922, 리전 asia-northeast3. 서비스 URL: https://readmind-backend-53543020852.asia-northeast3.run.app (--allow-unauthenticated, 1Gi/1cpu/--cpu-boost, min0/max3, timeout300).
+- 시크릿 7종 Secret Manager 경유(--set-secrets, 값은 콘솔에서 사용자가 직접 입력): readmind-datasource-{url,username,password}, readmind-jwt-secret, readmind-r2-{access-key,secret-key}, readmind-ai-service-token. 비민감(AI_SERVICE_URL=HF Space, S3_ENDPOINT/BUCKET/REGION/PATH_STYLE)은 --set-env-vars. PORT는 Cloud Run 주입이라 설정 금지(넣으면 거부).
+- 런타임 SA(53543020852-compute@developer.gserviceaccount.com)에 각 시크릿 secretAccessor 부여.
+- 검증: Creating Revision→Routing traffic done = 컨테이너 기동+Flyway Neon 마이그레이션+Tomcat PORT 바인딩 성공. HTTP e2e(GET /api/v1/auth/me→401, POST /api/v1/auth/signup→200)는 사내 MITM으로 내 환경에선 *.run.app 검증 불가 → 사용자 Cloud Shell에서 확인.
+- 함정: (1) 시크릿을 먼저 만들지 않고 deploy하면 빌드는 되고 Creating Revision에서 "Secret ... not found"로 실패 → 생성→grant→deploy 순서 필수. (2) --source는 Cloud Shell CWD 기준 → 반드시 ~/ReadMind 안에서 실행(홈에서 하면 could not find source [./backend]). (3) 모든 gcloud 호출에 "Regional Access Boundary ... Account not found: 24eebddd5e|llmdayeong@gmail.com"(활성계정 lim.dayeong과 다른 유령 principal) 반복 — 재시도 후 진행돼 비치명적이나 계정/조직 정책 이상, 추후 정리.
+- 런북: deploy/cloudrun-backend.md (시크릿 이름/grant/deploy 명령 — 값 미포함, 커밋 안전).
+- 남은 것: AI 실경로(Cloud Run→HF Space) e2e, 웹 프론트 API base를 이 URL로 + R2 CORS.
+
 [다음 세션 시작 시]
 - 막힘: 없음. Phase1 진행 중. 완료: be-annotations-crud, be-highlight-search, ai-parse-multi, ai-translate.
 - 다음 후보(Phase1, passes:false): web-reader-settings(M3, 리딩설정 다크/세피아·폰트·2단·자동스크롤 + epubjs 렌더 + 번역/하이라이트추천 패널 UI 연동) → mobile-reader-sync(M4, RN 앱+증분동기화).

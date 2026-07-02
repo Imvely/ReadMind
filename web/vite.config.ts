@@ -16,10 +16,11 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    // 개발 중 백엔드(/api/v1) 프록시 — CORS 없이 same-origin으로 호출.
+    // 개발 중 백엔드(/api) 프록시 — CORS 없이 same-origin으로 호출.
+    // VITE_DEV_API_TARGET 로 로컬(기본) ↔ Cloud Run 백엔드를 전환. 브라우저는 항상 localhost:5173만 보므로 CORS 불필요.
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: process.env.VITE_DEV_API_TARGET || 'http://localhost:8080',
         changeOrigin: true,
       },
     },

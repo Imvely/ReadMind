@@ -1,7 +1,9 @@
 import type { ApiResponse, RefreshResponse } from '@readmind/shared';
 import { tokens } from './tokens';
 
-export const API_BASE = '/api/v1';
+// 기본은 same-origin 상대경로('/api/v1') — dev는 vite 프록시가 백엔드로 넘긴다(CORS 없음).
+// VITE_API_BASE_URL에 절대 URL(예: Cloud Run)을 주면 브라우저가 직접 호출한다(백엔드 CORS 필요).
+export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api/v1';
 
 /** 백엔드 공통 래퍼의 error를 그대로 들고 다니는 예외. UI는 code로 분기(QUOTA_EXCEEDED 등). */
 export class ApiClientError extends Error {

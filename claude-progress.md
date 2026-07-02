@@ -163,11 +163,41 @@
 - 런북: deploy/cloudrun-backend.md (시크릿 이름/grant/deploy 명령 — 값 미포함, 커밋 안전).
 - 남은 것: AI 실경로(Cloud Run→HF Space) e2e, 웹 프론트 API base를 이 URL로 + R2 CORS.
 
-[다음 세션 시작 시]
-- 막힘: 없음. Phase1 진행 중. 완료: be-annotations-crud, be-highlight-search, ai-parse-multi, ai-translate.
-- 다음 후보(Phase1, passes:false): web-reader-settings(M3, 리딩설정 다크/세피아·폰트·2단·자동스크롤 + epubjs 렌더 + 번역/하이라이트추천 패널 UI 연동) → mobile-reader-sync(M4, RN 앱+증분동기화).
-- 다음 후보(Phase1, passes:false 위에서부터): ai-parse-multi(M1, EPUB/ebooklib·TXT·DOCX/python-docx 파서 추가, 디스패처 format→parser) → web-reader-settings(M3) → ai-translate(M1) → mobile-reader-sync(M4).
-- 운영: 스택 up 상태(docker compose --profile app, override로 ai 8000 미퍼블리시). 라이브 검증은 docker exec(MSYS_NO_PATHCONV=1). backend/ai 코드 바꾸면 해당 이미지 재빌드+force-recreate 필요. 브라우저 실사용은 R2 CORS 필요(현재 프리플라이트 403, 미반영/전파대기 — 사용 직전 재확인). Phase 0 개발(M1+M2+M3) + 배포 컨테이너화까지 완료. 남은 phase0 항목은 p0-beta-validate 하나(코드 아님: 실 배포+재사용률 계측).
-- 후보 A(p0-beta-validate): LLM_API_KEY 실값 세팅 → `docker compose --profile app up`으로 실 PDF 업로드→파싱→요약→QA 근거점프 브라우저 e2e 1회 → 커뮤니티 베타 배포 + 재사용률 지표(같은 유저가 다른 논문 또 업로드). 배포 대상/호스팅은 사용자 결정 필요.
-- 후보 B(Phase1 진입, active_phase 0→1): be-annotations-crud(§4.3, 하이라이트/메모/북마크/진행률 CRUD, location JSONB, 소유권 검증).
-- 환경: 진행 로그는 .md. 웹 web/ npm run {typecheck,build,test}. 백엔드 backend/ ./gradlew. 풀스택 `docker compose --profile app up -d`(단, 호스트 8000 충돌 시 ai-service 포트 override). docker readmind-postgres:5432.
+[2026-07-02] 클라우드 전 구간 e2e 성공 (p0-beta-validate 가치경로 실동작). commit 0ed2960까지.
+- 흐름 통과: Cloud Run 백엔드 → HF Space(ai-service) → Gemini → R2 → Neon. 업로드→R2 PUT 200→parse READY(txt)→summarize PAPER(한국어)→qa(answer+sources[{page,snippet}]=근거 포함, §3 라이브 충족).
+- 발견·해결(순서대로): (1) e2e R2 presigned PUT을 stdin 파이프로 하면 chunked→411 → 임시파일 업로드로 Content-Length 설정(9444e01). (2) HF Space가 ai-parse-multi 이전 이미지라 txt=415 UnsupportedFormat → deploy/hf-space-deploy.sh로 app/+requirements만 재동기화 push(b30fec0). (3) Gemini AQ.(Vertex Express) 키 무료 크레딧 소진→429 RESOURCE_EXHAUSTED → AI Studio Developer API 무료키(AIza)로 LLM_API_KEY 교체(HF Space Settings). 코드 기본이 Developer API 모드라 그대로 동작.
+- 웹: API_BASE=VITE_API_BASE_URL, vite dev 프록시=VITE_DEV_API_TARGET로 전환 가능(b53e938). 로컬 dev가 Cloud Run 보게 하려면 web/.env.local에 VITE_DEV_API_TARGET=<Cloud Run URL>(프록시라 백엔드 CORS 불필요). 백엔드엔 CORS 미설정 — cross-origin 직접호출 시 추가 필요.
+- 진단 도구: deploy/diag-ai-parse.sh(백엔드 업로드 storageKey로 Space /ai/parse 직접 호출→502 detail 노출). 운영: Cloud Run @Async 파싱은 --no-cpu-throttling 필수(revision 00005 적용).
+- 보안: 사용자가 채팅에 HF_TOKEN 평문 노출 → 폐기/재발급 요청함(사용자 처리 예정).
+- 남은 것: R2 CORS(브라우저 업로드용, 서버사이드 e2e엔 불필요), p0-beta-validate의 재사용률 계측(코드 아님·실사용), (선택)백엔드 CORS.
+
+[2026-07-02 저녁 — 세션 종료] 하루 종일 Cloud Run 배포 + 클라우드 e2e 디버깅. commit c3b0268 이후 이 커밋으로 정리.
+
+■ 오늘 완료(검증됨):
+- 백엔드 Cloud Run 배포 + 라이브(signup 200). 시크릿 7종 Secret Manager. 런북 deploy/cloudrun-backend.md.
+- 클라우드 AI 전 구간 e2e 성공(CLI): parse→summarize(한국어)→qa(근거 sources 포함). 스크립트: deploy/e2e-cloudrun.sh(txt), deploy/e2e-cloudrun-file.sh(파일/PDF·백엔드경로), deploy/diag-ai-parse.sh·diag-ai-parse-pdf.sh(Space 직접호출 동기진단).
+- **PDF parse 500 근본해결**: PDF 추출 텍스트의 NUL(0x00) → PostgreSQL text 컬럼 거부 → psycopg.DataError(ai-service/app/repositories/chunks_pg.py:68 executemany) → 500. 수정: 모든 파서 공통 출력 Page 생성 시 sanitize_text로 NUL·C0 제어문자 제거(ai-service/app/parsers/base.py). 테스트 ai-service/tests/test_base_sanitize.py. Space 재배포(deploy/hf-space-deploy.sh)로 반영. commit c3b0268.
+- 웹 Cloud Run 연결: API_BASE=VITE_API_BASE_URL, dev프록시=VITE_DEV_API_TARGET(web/.env.local, gitignore). 서재 목록 폴링 버그 수정(web/src/hooks/documents.ts useDocumentsQuery에 refetchInterval 추가 — PENDING/PARSING 있으면 2초 폴링).
+- 최종 검증: id=25(CLI 백엔드경로 PDF)·id=28(직접 Space) 둘 다 200 + chunkCount=3 + 요약/qa 정상. 샘플=LoRA 논문 앞3p.
+
+■ 막힘(다음 세션 최우선):
+- **브라우저 업로드만 parse 실패**: 브라우저 PDF 업로드 → "분석중"에서 곧바로 FAILED. 그런데 동일 파일/동일 백엔드경로가 CLI(deploy/e2e-cloudrun-file.sh → id=25)·직접Space(diag → id=28)에선 성공. 실패 예: id=27(08:56). 앞뒤 id=25/28은 성공 → 간헐적/브라우저 특이.
+- 실패가 "바로"(즉시)라는 게 핵심: 정상 parse는 ~9초인데 즉시 FAILED = 백엔드 @Async가 Space 성공응답 전에 빠르게 예외. DocumentParseRunner.run의 catch(backend/src/main/kotlin/com/readmind/document/DocumentParseRunner.kt:35→38 log.error "파싱 실패")에서 FAILED. AI 호출은 AiParseClient(backend/src/main/kotlin/com/readmind/document/ai/AiParseClient.kt:42-51, 재시도 없음).
+- 사유 미확인: gcloud logging read 가 이 환경에서 신뢰 불가(시간창 쿼리 empty, freshness도 최근분 empty; Regional Access Boundary 404 노이즈 매번). 브라우저 실패문서의 예외를 못 잡음.
+- **다음 확인법(가장 빠른 갈림)**: 브라우저 업로드 직후 HF Space **Logs 탭**(https://huggingface.co/spaces/dayeongim/readmind-ai) 확인 →
+    (a) /ai/parse 요청이 안 오면 = 백엔드가 Space 호출 전/네트워크에서 실패 → AiParseClient·config/AiHttp.kt·Cloud Run async/인스턴스 확인
+    (b) 요청은 오는데 에러면 = Space traceback 확인.
+- 가설: Space 재배포 콜드스타트 5xx를 AiParseClient가 재시도 없이 FAILED 처리(콜드스타트 창에 걸린 문서만 실패). 견고화안: AiParseClient에 전이오류(5xx/타임아웃) 재시도, 또는 documents에 parse_error 컬럼 추가해 사유를 API로 노출(디버깅 편의).
+
+■ 다음 먼저 할 것:
+1. 브라우저 재업로드 + HF Space Logs 동시확인 → (a)/(b) 판별 → 원인 확정.
+2. 확정 후 견고화(AiParseClient 전이오류 재시도) → 브라우저 e2e 완주 → p0-beta-validate 진행.
+
+■ 참고 컨텍스트:
+- 샘플 PDF: 로컬 C:\Users\LOTTE\Downloads\LoRA_3p.pdf, Cloud Shell ~/LoRA_3p.pdf (LoRA 논문 앞3p, PyMuPDF로 자름). Q&A 검증질문 "LoRA는 전체 파인튜닝 대비 학습 파라미터/GPU 메모리를 얼마나 줄이나요?"(정답 10,000x/3x, 근거 page1).
+- Cloud Run: URL https://readmind-backend-53543020852.asia-northeast3.run.app (context-path /api/v1). 프로젝트 gen-lang-client-0471683922 / 번호 53543020852 / asia-northeast3. @Async parse엔 --no-cpu-throttling 필요(적용됨).
+- Gemini: 무료 AI Studio Developer 키(AIza) 사용. 옛 Vertex Express(AQ.) 키는 prepayment credits 소진으로 교체. 키는 HF Space의 LLM_API_KEY(ai-service만 사용, 백엔드엔 없음).
+- 보안 TODO: AI_SERVICE_TOKEN 채팅에 2회 노출 → 재발급 필요(3곳 동기화: Secret Manager readmind-ai-service-token + HF Space AI_SERVICE_TOKEN + 로컬 .env). HF_TOKEN은 이미 폐기·재발급 완료.
+- 로컬 웹 실행: cd web; npm run dev (사내 MITM으로 프록시 TLS 깨지면 $env:NODE_EXTRA_CA_CERTS="C:\dayeong\99.etc\ReadMind\ai-service\certs\corp-root.crt"). R2 CORS는 http://localhost:5173 적용됨(GET/PUT).
+- Cloud Shell에서 Space 재배포: export HF_TOKEN=<새키>; bash deploy/hf-space-deploy.sh. 진단: bash deploy/diag-ai-parse-pdf.sh ~/LoRA_3p.pdf pdf (AI_SERVICE_TOKEN export 필요).
+- feature_list: 변경 없음. p0-beta-validate 아직 false(브라우저 e2e 미완).

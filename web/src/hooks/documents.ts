@@ -20,6 +20,14 @@ export function useDocumentsQuery() {
   return useQuery({
     queryKey: documentKeys.all,
     queryFn: () => listDocuments(),
+    // 목록에 파싱 중(PENDING/PARSING)인 문서가 하나라도 있으면 2초 폴링 → 모두 끝나면 멈춘다.
+    refetchInterval: (query) => {
+      const items = query.state.data?.items ?? [];
+      const inProgress = items.some(
+        (d) => d.parseStatus === 'PENDING' || d.parseStatus === 'PARSING',
+      );
+      return inProgress ? 2000 : false;
+    },
   });
 }
 

@@ -95,6 +95,8 @@ export interface DocumentDto {
   pageCount: number | null;
   language: string | null;
   parseStatus: ParseStatus;
+  /** FAILED일 때만 내려오는 실패 사유 (백엔드는 null 필드 생략). */
+  parseError?: string | null;
   createdAt: string | null;
 }
 export interface DocumentListResponse {

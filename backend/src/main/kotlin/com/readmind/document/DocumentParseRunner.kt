@@ -18,6 +18,10 @@ class DocumentParseRunner(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
+    /** 사유 없는 실패 금지(§4.2) — 예외를 짧은 요약으로 남긴다(컬럼/응답 크기 보호를 위해 절단). */
+    private fun errorSummary(ex: Exception): String =
+        "${ex.javaClass.simpleName}: ${ex.message ?: "(no message)"}".take(MAX_ERROR_LENGTH)
+
     @Async("parseExecutor")
     @Transactional
     fun run(documentId: Long) {
@@ -30,12 +34,18 @@ class DocumentParseRunner(
             doc.pageCount = result.pageCount
             doc.language = result.language
             doc.parseStatus = ParseStatus.READY
+            doc.parseError = null
             documents.save(doc)
             log.info("파싱 완료: id={}, chunks={}, pages={}", documentId, result.chunkCount, result.pageCount)
         } catch (ex: Exception) {
             doc.parseStatus = ParseStatus.FAILED
+            doc.parseError = errorSummary(ex)
             documents.save(doc)
             log.error("파싱 실패: id={}", documentId, ex)
         }
+    }
+
+    private companion object {
+        const val MAX_ERROR_LENGTH = 500
     }
 }

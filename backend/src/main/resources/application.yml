@@ -47,6 +47,8 @@ app:
     base-url: ${AI_SERVICE_URL:http://localhost:8000}
     service-token: ${AI_SERVICE_TOKEN:}
     parse-timeout-seconds: ${AI_PARSE_TIMEOUT:120}
+    parse-retry-max-attempts: ${AI_PARSE_RETRY_MAX_ATTEMPTS:4}
+    parse-retry-initial-backoff-seconds: ${AI_PARSE_RETRY_BACKOFF:5}
 
 logging:
   level:

@@ -201,3 +201,13 @@
 - 로컬 웹 실행: cd web; npm run dev (사내 MITM으로 프록시 TLS 깨지면 $env:NODE_EXTRA_CA_CERTS="C:\dayeong\99.etc\ReadMind\ai-service\certs\corp-root.crt"). R2 CORS는 http://localhost:5173 적용됨(GET/PUT).
 - Cloud Shell에서 Space 재배포: export HF_TOKEN=<새키>; bash deploy/hf-space-deploy.sh. 진단: bash deploy/diag-ai-parse-pdf.sh ~/LoRA_3p.pdf pdf (AI_SERVICE_TOKEN export 필요).
 - feature_list: 변경 없음. p0-beta-validate 아직 false(브라우저 e2e 미완).
+
+[2026-07-03] 브라우저 업로드 FAILED 원인 확정 + 파싱 견고화 (p0-beta-validate 선행).
+- 원인 확정: 브라우저와 100% 동일한 시퀀스(create→R2 PUT Content-Type:application/pdf→complete)를 PowerShell로 Cloud Run에 재현 → id=30 정상 READY(10초). 즉 어제 id=27 실패는 코드 결함이 아니라 **Space 재배포/콜드스타트 창의 일시 5xx를 AiParseClient가 재시도 없이 즉시 FAILED 처리**한 것(어제 Space 2회 재배포와 시간대 일치). presign은 content-type 미서명이라 브라우저 PUT 헤더는 무관, PUT 실패 시 complete 자체가 안 가므로(PENDING 잔류) "FAILED=업로드는 성공" 확정.
+- 견고화 구현(명세서 §3 documents.parse_error / §4.2 먼저 갱신 후 코드):
+  (1) AiParseClient 일시오류(5xx/429/타임아웃/연결) 백오프 재시도 — Retry.kt retryTransient, 기본 4회(5s→10s→20s), env AI_PARSE_RETRY_MAX_ATTEMPTS/AI_PARSE_RETRY_BACKOFF. 4xx는 즉시 실패.
+  (2) 미사용이던 parseTimeoutSeconds를 실제 readTimeout으로 연결 + connect timeout 10s (JDK HttpClient 기본 무한대기 차단).
+  (3) V2__documents_parse_error.sql + Document/DTO/러너 — FAILED 시 예외요약(500자 절단) 저장, 성공·재complete 시 NULL. API 노출(NON_NULL이라 FAILED일 때만 내려감). shared DocumentDto.parseError?.
+  (4) 웹: 서재 FAILED 카드에 사유 표시 + "다시 분석" 버튼(useRetryParse=complete 재호출. complete는 READY만 스킵이라 기존 계약 그대로).
+- 검증(라이브): gradlew test(RetryTest 5 + 러너 parse_error 3 포함) + integrationTest(실 PG에 V2 적용·부팅) + npm typecheck/build/vitest 15. **런타임 e2e: mock AI(503↔200 전환)+bootRun+실 MinIO로 3시나리오** — flaky:2→재시도 3회만에 READY / fail→정확히 4회 시도 후 FAILED+parseError="ServiceUnavailable: 503..." 목록·단건 노출 / ok로 전환 후 complete 재호출→READY+parseError 소거. READY 재complete는 AI 호출 0건(캐싱 유지).
+- 남은 것(사용자): Cloud Run 재배포(gcloud, Cloud Shell) → 브라우저 업로드 최종 확인 → p0-beta-validate. AI_SERVICE_TOKEN 재발급 TODO 여전.

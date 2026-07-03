@@ -2,7 +2,12 @@ import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { DocumentDto } from '@readmind/shared';
 import { useAuthStore } from '@/store/auth';
-import { useDeleteDocument, useDocumentsQuery, useUploadDocument } from '@/hooks/documents';
+import {
+  useDeleteDocument,
+  useDocumentsQuery,
+  useRetryParse,
+  useUploadDocument,
+} from '@/hooks/documents';
 
 const STATUS_LABEL: Record<DocumentDto['parseStatus'], string> = {
   PENDING: '대기 중',
@@ -24,6 +29,7 @@ export default function LibraryPage() {
   const { data, isLoading, isError } = useDocumentsQuery();
   const upload = useUploadDocument();
   const del = useDeleteDocument();
+  const retry = useRetryParse();
   const fileInput = useRef<HTMLInputElement>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -90,7 +96,21 @@ export default function LibraryPage() {
               >
                 {STATUS_LABEL[doc.parseStatus]}
               </span>
+              {doc.parseStatus === 'FAILED' && doc.parseError && (
+                <p className="mt-1 truncate text-xs text-red-500" title={doc.parseError}>
+                  {doc.parseError}
+                </p>
+              )}
             </button>
+            {doc.parseStatus === 'FAILED' && (
+              <button
+                onClick={() => retry.mutate(doc.id)}
+                disabled={retry.isPending}
+                className="ml-3 shrink-0 text-xs text-slate-500 hover:text-slate-900 disabled:opacity-50"
+              >
+                다시 분석
+              </button>
+            )}
             <button
               onClick={() => del.mutate(doc.id)}
               className="ml-3 text-xs text-slate-300 opacity-0 hover:text-red-600 group-hover:opacity-100"

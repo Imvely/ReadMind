@@ -39,6 +39,8 @@ data class DocumentDto(
     val language: String?,
     val parseStatus: ParseStatus,
     val createdAt: Instant?,
+    /** FAILED일 때만 채워지는 실패 사유 (명세서 §4.2). */
+    val parseError: String? = null,
 )
 
 /** 목록 페이지네이션 (명세서 §4: data.items[], totalElements, hasNext). */

@@ -44,6 +44,7 @@ class DocumentService(
             return CompleteResponse(doc.id!!, doc.parseStatus)
         }
         doc.parseStatus = ParseStatus.PARSING
+        doc.parseError = null // 재시도 시 이전 실패 사유 초기화.
         documents.save(doc)
         parseRunner.run(doc.id!!)
         return CompleteResponse(doc.id!!, ParseStatus.PARSING)
@@ -98,6 +99,7 @@ class DocumentService(
         pageCount = pageCount,
         language = language,
         parseStatus = parseStatus,
+        parseError = parseError,
         createdAt = createdAt,
     )
 

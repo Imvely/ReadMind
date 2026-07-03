@@ -24,8 +24,8 @@ class DocumentParseRunnerTest {
     ).also { it.id = 1L; it.parseStatus = ParseStatus.PARSING }
 
     @Test
-    fun `파싱 성공 - READY + page_count, language 반영`() {
-        val d = doc()
+    fun `파싱 성공 - READY + page_count, language 반영, parse_error 초기화`() {
+        val d = doc().also { it.parseError = "이전 실패 사유" }
         whenever(documents.findById(1L)).doReturn(Optional.of(d))
         whenever(aiClient.parse(1L, "k", "PDF")).doReturn(ParseResult(chunkCount = 12, language = "ko", pageCount = 8))
 
@@ -34,11 +34,12 @@ class DocumentParseRunnerTest {
         assertEquals(ParseStatus.READY, d.parseStatus)
         assertEquals(8, d.pageCount)
         assertEquals("ko", d.language)
+        assertEquals(null, d.parseError)
         verify(documents).save(d)
     }
 
     @Test
-    fun `파싱 실패 - FAILED 전이(예외 삼키지 않고 상태 기록)`() {
+    fun `파싱 실패 - FAILED 전이 + parse_error에 사유 기록(사유 없는 실패 금지)`() {
         val d = doc()
         whenever(documents.findById(1L)).doReturn(Optional.of(d))
         whenever(aiClient.parse(any(), any(), any())).doThrow(RuntimeException("AI down"))
@@ -46,7 +47,20 @@ class DocumentParseRunnerTest {
         runner.run(1L)
 
         assertEquals(ParseStatus.FAILED, d.parseStatus)
+        assertEquals("RuntimeException: AI down", d.parseError)
         verify(documents).save(d)
+    }
+
+    @Test
+    fun `파싱 실패 - 사유가 길면 절단(컬럼,응답 보호)`() {
+        val d = doc()
+        whenever(documents.findById(1L)).doReturn(Optional.of(d))
+        whenever(aiClient.parse(any(), any(), any())).doThrow(RuntimeException("x".repeat(2000)))
+
+        runner.run(1L)
+
+        assertEquals(ParseStatus.FAILED, d.parseStatus)
+        assertEquals(500, d.parseError!!.length)
     }
 
     @Test

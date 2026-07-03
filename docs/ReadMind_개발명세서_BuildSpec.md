@@ -148,6 +148,7 @@ CREATE TABLE documents (
   page_count    INT,
   language      VARCHAR(10),
   parse_status  VARCHAR(20) NOT NULL DEFAULT 'PENDING', -- PENDING/PARSING/READY/FAILED
+  parse_error   TEXT,                           -- FAILED 사유(예외 요약). 성공/재시도 시 NULL로 초기화
   is_synced     BOOLEAN NOT NULL DEFAULT false,         -- 클라우드 동기화 대상(유료)
   client_updated_at TIMESTAMPTZ,
   version       INT NOT NULL DEFAULT 1,
@@ -305,11 +306,13 @@ CREATE INDEX idx_flashcards_due ON flashcards(user_id, due_at) WHERE deleted_at 
 | POST | `/documents` | 업로드 초기화 → presigned URL 반환 `{documentId, uploadUrl}` |
 | POST | `/documents/{id}/complete` | 업로드 완료 통지 → 파싱 비동기 시작 |
 | GET | `/documents` | 내 문서 목록(검색·정렬·필터) |
-| GET | `/documents/{id}` | 문서 메타 + parse_status |
+| GET | `/documents/{id}` | 문서 메타 + parse_status (FAILED면 `parseError` 사유 포함) |
 | GET | `/documents/{id}/content` | 렌더용 원문 스트림/URL(권한 확인) |
 | DELETE | `/documents/{id}` | 소프트 삭제 |
 
 **업로드 플로우(중요)**: 클라이언트가 직접 S3에 presigned PUT → `complete` 호출 → Spring이 AI 서비스에 파싱 요청(비동기) → 파싱 완료 시 `documents.parse_status=READY`. 클라이언트는 폴링 또는 SSE `/documents/{id}/events`로 상태 수신.
+- Spring→AI 파싱 호출은 **일시 오류(5xx/429/타임아웃/연결 실패)에 백오프 재시도**한다(AI 서비스 콜드스타트·재배포 창 대응). 4xx 등 영구 오류는 즉시 FAILED.
+- FAILED 시 예외 요약을 `documents.parse_error`에 남기고 API로 노출한다(사유 없는 실패 금지). READY 문서가 아니면 `complete` 재호출로 재파싱을 트리거할 수 있다.
 
 ### 4.3 주석/진행률 (동기화 대상)
 | 메서드 | 경로 | 설명 |

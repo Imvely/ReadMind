@@ -73,6 +73,17 @@ export function useUploadDocument() {
   });
 }
 
+/** FAILED 문서 재파싱: complete 재호출이 파싱을 다시 트리거한다(READY면 백엔드가 스킵). */
+export function useRetryParse() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => completeDocument(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: documentKeys.all });
+    },
+  });
+}
+
 export function useDeleteDocument() {
   const qc = useQueryClient();
   return useMutation({

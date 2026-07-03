@@ -43,6 +43,10 @@ class Document(
     @Column(name = "parse_status", nullable = false)
     var parseStatus: ParseStatus = ParseStatus.PENDING,
 
+    /** FAILED 사유(예외 요약). 성공·재시도 시 NULL로 초기화 (명세서 §3, §4.2). */
+    @Column(name = "parse_error")
+    var parseError: String? = null,
+
     @Column(name = "deleted_at")
     var deletedAt: Instant? = null,
 ) {

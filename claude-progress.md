@@ -223,3 +223,16 @@
 - 오전 견고화는 유효 확인: 프로브(id=33, 업로드 생략 의도적 실패)에서 새 리비전이 재시도 4회(~42s) 후 FAILED + parse_error에 Space 502 detail(S3 NoSuchKey) 저장·API 노출 실동작.
 - 남음: 사용자 브라우저 최종 확인(npm run dev 재시작 후 업로드)만. 이후 p0-beta-validate.
 - **[사용자 확인 완료] 브라우저 e2e 성공** — loadEnv 수정 후 실 브라우저에서 LoRA_3p.pdf 업로드→READY→요약/Q&A 정상("오대박 너무잘돼"). Phase 0 가치 경로(업로드→요약→Q&A→근거)가 실사용자 브라우저에서 최초로 완주됨. 이제 p0-beta-validate(베타 배포+재사용률 계측)만 남음.
+
+[2026-07-04] 하네스 엔지니어링 리팩토링 (집 PC 최초 세션 — 어떤 모델로 작업해도 동일 품질이 나오게 판단→결정론적 게이트로 이관)
+- 완료(검증됨): 훅 전면 재작성 + 테스트 14케이스 전부 PASS + 실패경로 라이브 확인.
+  - **SessionStart 신규**(.claude/hooks/session-start.sh): 세션 시작 시 진행로그 최신 항목·미완료 feature·git 상태·검증도구 가용성을 자동 주입. 도구 누락 시 "검증 게이트 비활성" 경고(조용한 no-op 방지).
+  - **guard.sh→guard.py**: raw grep→훅 JSON 필드 검사로 오탐 제거. 시크릿 패턴 확장(sk-/AIza/hf_/ghp_/AKIA/xox/AQ./private key/jwt). **.txt 생성 차단 신설**(Write/Edit/Bash리다이렉트/PS Out-File·Set-Content, requirements*.txt 예외 — DRM 규칙 기계화). PowerShell 툴도 matcher에 추가. stderr UTF-8 강제(cp949 깨짐 수정).
+  - **verify.sh→verify.py**: (구버전은 항상 exit 0 = 장식용이었음) 편집 파일 경로 기반 모듈 디스패치 — ai-service *.py→ruff(파일 단위, venv 우선), web/packages *.ts(x)→npm run typecheck. **실패 시 exit 2로 에러가 모델에 즉시 피드백**. 도구 없으면 조용히 통과(SessionStart가 이미 경고). backend *.kt는 편집 시점 검사 없음 → /evening에서 gradlew test 의무화.
+  - 구 .claude/skills/verify-*/check.sh 삭제(디스패치가 verify.py로 통합).
+  - **/morning·/evening 수정**: claude-progress.txt 참조 버그→.md. evening에 모듈별 검증 명령 명시(실행 출력이 근거) + 진행로그 템플릿 고정. morning에 spec 필드→명세서 확인 단계 추가.
+  - CLAUDE.md §12.5 갱신(훅 3종 체계 + "모델 판단 대신 결정론적 게이트" 원칙 명문화). settings.local.json allow 확대(git 조회/npm 검증/ruff/pytest/gradlew — 권한 프롬프트 감소).
+  - 집 PC 부트스트랩: 루트 npm install(워크스페이스) + pip ruff. 검증: guard 14케이스 스크립트 PASS, verify 깨진 py→ruff 에러 exit 2 피드백 확인, App.tsx→typecheck 통과 확인.
+- 막힘: 없음. 단 ai-service/.venv 미구축(집) — 로컬 pytest 불가(Python 3.14 wheel 호환 확인 필요). backend 편집 시점 게이트 없음(gradle 속도 문제, 의도된 트레이드오프).
+- 다음 먼저 할 것: feature_list 재개 — active_phase 1의 web-reader-settings(또는 p0-beta-validate 실사용 계측). 원하면 ai-service venv 구축.
+- 참고 컨텍스트: 근거 리서치=Anthropic 공식 베스트프랙티스(hooks/memory/skills 문서). 훅 테스트 스크립트는 세션 스크래치패드(레포 밖). 회사↔집 메모리 동기화 완료(~/.claude/projects/D--dy-ReadMind/memory).

@@ -234,6 +234,7 @@
   - CLAUDE.md §12.5 갱신(훅 3종 체계 + "모델 판단 대신 결정론적 게이트" 원칙 명문화). settings.local.json allow 확대(git 조회/npm 검증/ruff/pytest/gradlew — 권한 프롬프트 감소).
   - 집 PC 부트스트랩: 루트 npm install(워크스페이스) + pip ruff. 검증: guard 14케이스 스크립트 PASS, verify 깨진 py→ruff 에러 exit 2 피드백 확인, App.tsx→typecheck 통과 확인.
 - ai-service/.venv 구축 완료(집, Python 3.14): 전체 wheel 정상(PyMuPDF 1.28 포함), **pytest 122 passed/6 skipped** — Fasoo 우회 env 없이 통과. verify.py가 venv ruff를 자동 사용, SessionStart "게이트 비활성" 경고 소멸(전 게이트 활성). session-start.sh 한글 cp949 깨짐 수정(PYTHONIOENCODING=utf-8).
+- 집 PC 전체 그린 베이스라인 확정: ai-service pytest 122 pass / web vitest 15 pass / backend gradlew test 80 pass(첫 실행 3m32s, 이후 데몬 캐시). 세 모듈 모두 이 머신에서 빌드·테스트 재현 확인.
 - 막힘: 없음. backend 편집 시점 게이트 없음(gradle 속도 문제, 의도된 트레이드오프 — 커밋 전 gradlew test).
 - 다음 먼저 할 것: feature_list 재개 — active_phase 1의 web-reader-settings(또는 p0-beta-validate 실사용 계측). 원하면 ai-service venv 구축.
 - 참고 컨텍스트: 근거 리서치=Anthropic 공식 베스트프랙티스(hooks/memory/skills 문서). 훅 테스트 스크립트는 세션 스크래치패드(레포 밖). 회사↔집 메모리 동기화 완료(~/.claude/projects/D--dy-ReadMind/memory).

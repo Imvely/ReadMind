@@ -211,3 +211,14 @@
   (4) 웹: 서재 FAILED 카드에 사유 표시 + "다시 분석" 버튼(useRetryParse=complete 재호출. complete는 READY만 스킵이라 기존 계약 그대로).
 - 검증(라이브): gradlew test(RetryTest 5 + 러너 parse_error 3 포함) + integrationTest(실 PG에 V2 적용·부팅) + npm typecheck/build/vitest 15. **런타임 e2e: mock AI(503↔200 전환)+bootRun+실 MinIO로 3시나리오** — flaky:2→재시도 3회만에 READY / fail→정확히 4회 시도 후 FAILED+parseError="ServiceUnavailable: 503..." 목록·단건 노출 / ok로 전환 후 complete 재호출→READY+parseError 소거. READY 재complete는 AI 호출 0건(캐싱 유지).
 - 남은 것(사용자): Cloud Run 재배포(gcloud, Cloud Shell) → 브라우저 업로드 최종 확인 → p0-beta-validate. AI_SERVICE_TOKEN 재발급 TODO 여전.
+
+[2026-07-03 오후] **진짜 원인 확정 + 수정 — "브라우저만 실패"는 콜드스타트가 아니라 vite dev 프록시 오라우팅이었다.** (오전의 콜드스타트 가설은 오진으로 정정)
+- 재배포 후에도 사용자 브라우저 업로드 FAILED(id=31), 단 parse_error=NULL = 구코드가 처리했다는 뜻. 판별 근거 3종:
+  (1) Neon 직접 조회(psycopg, 호스트에서 sslmode=require라 MITM 무관): 사용자 계정 업로드는 어제오늘 7건 전부 FAILED, 내 재현은 전부 READY. R2 객체 바이트 검사 — 실패 문서들도 정상 PDF(브라우저/Fasoo 변조 아님).
+  (2) HF Space run 로그(huggingface.co API /logs/run SSE, PowerShell+httpx로 조회 가능): **사용자 업로드 시각에 /ai/parse 요청 자체가 Space에 안 옴**. 내 재현/CLI/프로브는 전부 기록됨(오늘 프로브의 502×4 재시도까지 보임).
+  (3) 로컬 readmind-backend 컨테이너 로그에 id=31 파싱 실패 스택 발견: 로컬 ai-service → Gemini **429 RESOURCE_EXHAUSTED(옛 AQ. Vertex 키, 크레딧 소진)**.
+- 메커니즘: vite.config.ts가 `process.env.VITE_DEV_API_TARGET`을 읽음 → **.env.local은 config 자신의 process.env에 주입되지 않음**(import.meta.env 전용) → 프록시가 조용히 기본값 localhost:8080=로컬 docker 백엔드(구 이미지)로 감 → 로컬 ai-service의 소진된 키로 즉시 429 → FAILED. 두 백엔드가 같은 Neon을 공유해 한 서재에 섞여 보여 혼선 가중. CLI/diag는 Cloud Run 직행이라 성공 — "브라우저만 실패"의 전부가 이것.
+- 수정: vite.config.ts를 defineConfig(({mode}) => …) + `loadEnv`로 전환(commit). 검증(라이브): dev 프록시 응답 헤더 `server: Google Frontend`+`x-cloud-trace-context` 확인 + 프록시 경유 업로드 e2e READY(id=34, 10s). typecheck+vitest 15 통과.
+- 재발 방지: 로컬 앱 컨테이너 4종(backend/web/caddy/ai-service) stop — 같은 Neon/R2에 쓰는 구버전+깨진 키 스택이 함정으로 남지 않게. 복구는 `docker start readmind-backend readmind-web readmind-caddy readmind-ai-service`. 로컬 스택 다시 쓰려면 .env LLM_API_KEY를 새 AIza 키로 교체 필요.
+- 오전 견고화는 유효 확인: 프로브(id=33, 업로드 생략 의도적 실패)에서 새 리비전이 재시도 4회(~42s) 후 FAILED + parse_error에 Space 502 detail(S3 NoSuchKey) 저장·API 노출 실동작.
+- 남음: 사용자 브라우저 최종 확인(npm run dev 재시작 후 업로드)만. 이후 p0-beta-validate.

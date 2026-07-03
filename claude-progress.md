@@ -222,3 +222,4 @@
 - 재발 방지: 로컬 앱 컨테이너 4종(backend/web/caddy/ai-service) stop — 같은 Neon/R2에 쓰는 구버전+깨진 키 스택이 함정으로 남지 않게. 복구는 `docker start readmind-backend readmind-web readmind-caddy readmind-ai-service`. 로컬 스택 다시 쓰려면 .env LLM_API_KEY를 새 AIza 키로 교체 필요.
 - 오전 견고화는 유효 확인: 프로브(id=33, 업로드 생략 의도적 실패)에서 새 리비전이 재시도 4회(~42s) 후 FAILED + parse_error에 Space 502 detail(S3 NoSuchKey) 저장·API 노출 실동작.
 - 남음: 사용자 브라우저 최종 확인(npm run dev 재시작 후 업로드)만. 이후 p0-beta-validate.
+- **[사용자 확인 완료] 브라우저 e2e 성공** — loadEnv 수정 후 실 브라우저에서 LoRA_3p.pdf 업로드→READY→요약/Q&A 정상("오대박 너무잘돼"). Phase 0 가치 경로(업로드→요약→Q&A→근거)가 실사용자 브라우저에서 최초로 완주됨. 이제 p0-beta-validate(베타 배포+재사용률 계측)만 남음.

@@ -3,6 +3,7 @@
 # stdout이 그대로 컨텍스트에 들어가므로 간결하게 유지한다 (40줄 이내 목표).
 ROOT="${CLAUDE_PROJECT_DIR:-.}"
 cd "$ROOT" || exit 0
+export PYTHONIOENCODING=utf-8  # Windows cp949 콘솔에서 한글 출력 깨짐 방지
 
 echo "## 세션 시작 컨텍스트 (자동 주입 — CLAUDE.md §12.1)"
 

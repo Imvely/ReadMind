@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import ePub, { type Rendition } from 'epubjs';
 import type { PdfViewerHandle } from './PdfViewer';
-import { THEME_SURFACE, useReaderSettings, type ReaderTheme } from '@/store/readerSettings';
+import { useReaderSettings, type ReaderTheme } from '@/store/readerSettings';
 
 interface Props {
   url: string;
@@ -126,9 +126,12 @@ const EpubViewer = forwardRef<PdfViewerHandle, Props>(function EpubViewer({ url 
   }, [columns]);
 
   return (
+    // 바깥 여백/패딩 없음 — 이북 영역이 AI 패널까지 가득 찬다(베타 피드백).
+    // 여백(marginX)은 본문 body 패딩(themes)으로만 적용하고, 배경도 본문과 같은 색으로
+    // 맞춰 잔여 거터가 띠처럼 보이지 않게 한다.
     <div
       className="relative h-full"
-      style={{ backgroundColor: THEME_SURFACE[theme].bg, padding: `0 ${marginX}px` }}
+      style={{ backgroundColor: EPUB_THEME[theme].background }}
     >
       {loading && (
         <p className="absolute left-1/2 top-4 z-10 -translate-x-1/2 text-slate-400">EPUB 로딩 중…</p>

@@ -285,3 +285,4 @@
 - 막힘: **집 PC에 Android SDK/Studio 없음**(JDK 21만) — RN 앱은 빌드 검증 불가라 착수 보류(§12.3: 검증 없는 코드 금지). **사용자 액션: Android Studio 설치**(https://developer.android.com/studio — 기본 설치에 SDK+에뮬레이터 포함).
 - 다음 먼저 할 것: Android Studio 설치 확인 → mobile/ RN 0.74+ 스캐폴드 → 로그인/서재/리더(react-native-pdf) 최소 + MMKV 어댑터로 shared 엔진 연결.
 - 미결(사용자): Gemini 쿼터(20/day — 베타 블로커), AI_SERVICE_TOKEN 재발급, web-reader-settings 브라우저 확인, Cloud Run 재배포(V3+sync API 반영: cd ~/ReadMind && git pull && gcloud run deploy readmind-backend --source=./backend --region=asia-northeast3).
+- **[추가] sync 라이브 e2e ALL PASS**(로컬 docker PG + bootRun): 신규 push(clientId 매핑)/changes 커서/수정 적용(version 2)/**V3 트리거 실동작(수정분이 since 커서에 잡힘 — 유일한 미검증 조각이었음)**/충돌→서버 상태/tombstone 전파/타인 문서 404/progress upsert. integrationTest도 실 PG에서 5개 통과(Flyway V1→V3 적용 검증). 집 PC에 docker 있음 — readmind_smoke DB는 integrationTest 선행 조건(createdb 필요, 이번에 생성). e2e 스크립트=스크래치패드 e2e_sync.py(레포 밖). 검증 후 postgres 컨테이너·bootRun 정리.

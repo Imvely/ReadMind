@@ -57,8 +57,9 @@ def main() -> None:
         if m:
             block(f"시크릿 하드코딩 감지({m.group()[:12]}…). .env로 옮기고 .env.example엔 자리표시자만. (§3)")
 
-    # 2) .env 스테이징·커밋 차단
-    if ENV_STAGE_RE.search(command):
+    # 2) .env 스테이징·커밋 차단 — 따옴표 안(커밋 메시지 등)의 언급은 오탐이므로 제거 후 검사
+    cmd_no_strings = re.sub(r"\"[^\"]*\"|'[^']*'", "", command)
+    if ENV_STAGE_RE.search(cmd_no_strings):
         block(".env 커밋 시도. .env는 .gitignore 대상, .env.example만 커밋. (§3)")
 
     # 3) .txt 문서 생성 금지 (DRM) — 파일 툴 + 셸 리다이렉트 모두

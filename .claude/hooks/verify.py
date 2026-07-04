@@ -30,7 +30,10 @@ def fail(header: str, output: str) -> None:
 
 
 def run(cmd: str, cwd: str) -> "subprocess.CompletedProcess[str]":
-    return subprocess.run(cmd, cwd=cwd, shell=True, capture_output=True, text=True, timeout=120)
+    # encoding 미지정 시 Windows가 cp949로 디코드 → 검사 도구의 한글 출력에서 UnicodeDecodeError
+    # → stdout=None → 훅이 exit 1로 죽어 실패가 침묵함. 반드시 utf-8 + errors=replace.
+    return subprocess.run(cmd, cwd=cwd, shell=True, capture_output=True, text=True,
+                          encoding="utf-8", errors="replace", timeout=120)
 
 
 def main() -> None:
@@ -54,14 +57,14 @@ def main() -> None:
             sys.exit(0)
         r = run(f'"{ruff}" check "{fp}"', os.path.join(ROOT, "ai-service"))
         if r.returncode != 0:
-            fail(f"ruff 실패: {rel}", r.stdout + r.stderr)
+            fail(f"ruff 실패: {rel}", (r.stdout or "") + (r.stderr or ""))
 
     elif (rel.startswith(("web/", "packages/"))) and rel.endswith((".ts", ".tsx")):
         if not os.path.isdir(os.path.join(ROOT, "node_modules")):
             sys.exit(0)
         r = run("npm run typecheck", ROOT)
         if r.returncode != 0:
-            fail("typecheck 실패", r.stdout + r.stderr)
+            fail("typecheck 실패", (r.stdout or "") + (r.stderr or ""))
 
     sys.exit(0)
 

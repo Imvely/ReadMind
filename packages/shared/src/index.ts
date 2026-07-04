@@ -292,3 +292,6 @@ export interface SyncPushResponse {
   conflicts: SyncConflictDto[];
   cursor: string;
 }
+
+// 동기화 엔진(§4.5 클라이언트 로직) — 웹·안드가 저장소/전송 어댑터만 구현해 공유한다(§6).
+export * from './sync/engine';

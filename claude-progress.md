@@ -259,3 +259,12 @@
 - 막힘: 없음. 주의 — R2 preflight는 204가 정상(테스트에서 200 기대는 내 오류였음).
 - 다음 먼저 할 것: AI_SERVICE_TOKEN 재발급(사용자) → 커뮤니티 공유(사용자 타이밍) → 재사용률 측정 시작(scripts/metrics, e2e 계정 @readmind.dev 제외 필터 추가).
 - 참고: gh-pages 재배포는 bash deploy/gh-pages-deploy.sh 한 방(집 PC, credential manager 인증). Pages HTML CDN 반영에 수 분 지연 있을 수 있음.
+
+[2026-07-05 저녁] 베타 실사용 피드백 5건 반영 — 요약/QA 지속성·자동화·동적 UX·근거 하이라이트·한국어 고정. 전부 라이브 검증 + 사용자 브라우저 확인("요약 한국어 잘 나온다 Q&A 테스트도 잘돼").
+- **qa/history API 신설**(1d9ea43, 명세서 §4.4 먼저): GET /documents/{id}/qa/history — 최근 세션 메시지 시간순, ASSISTANT sources(jsonb, AiSource pageNo형→QaSourceDto page형 변환) 포함, 조회 전용 쿼터 미차감, 소유권 검증. 테스트 5개. 라이브 e2e ALL PASS(빈이력/세션이어가기/4턴 복원/재로그인 유지/타계정 404).
+- **웹 지속성+UX**(badc8e2): 요약 버튼 제거→리더 진입 시 자동 로드(서버 summaries 캐시=SSOT, 캐시히트 쿼터 0 — 자동 호출 안전 근거). Q&A는 history 쿼리 복원 + useAsk onSuccess에서 setQueryData로 턴 즉시 반영. '생각 중' 인디케이터(찾는 중→대조 중→작성 중 순환+스피너), 요약 스켈레톤. jsdom엔 scrollIntoView 없음 → 옵셔널 호출.
+- **요약 한국어 고정**(459b64c, 명세서 §5.3 먼저): 구 규칙 "본문 언어를 따른다"가 영어 논문→영어 요약(그간 한국어는 LLM 변덕). 프롬프트 한국어 강제(전문용어·glossary term 원어 유지). HF Space 재배포 후 라이브 검증 — "Low-rank adaptation은 …매개변수를…" 형태 확인. **구프롬프트 요약 캐시 8건 Neon서 삭제**(파생 데이터, 다음 열람 시 재생성).
+- **근거 플래시 하이라이트**(badc8e2→정확도 수정 5e81c8a): 근거 칩 클릭 시 페이지 점프+snippet 위치 2.4s 하이라이트. 첫 버전이 무의미한 위치에 뜸(사용자 리포트) — 원인=PyMuPDF vs pdf.js 추출 차이(리가처 ﬁ/스마트따옴표/대시/공백). snippetMatch.ts 분리: NFKC 접기+점진 축소(96→24)+16자 미만 null(오탐이면 안 띄움)+근거 줄 scrollIntoView(center). 테스트 6개.
+- 테스트 집계: backend 87 / web 24 / ai-service 124 — 전부 그린. Pages 번들 index-DXSVgG-B.js 반영 확인.
+- 참고: Cloud Run 재배포는 사용자가 Cloud Shell로 2회 수행(CORS env, qa/history). GFE 411(빈 POST) 때문에 집에선 e2e를 python httpx로(스크래치패드 e2e_qa_history.py 등).
+- 남음(사용자): AI_SERVICE_TOKEN 재발급, 커뮤니티 공유(보류 중). 다음 코드 작업: web-reader-settings(P1/M3, §6.1).

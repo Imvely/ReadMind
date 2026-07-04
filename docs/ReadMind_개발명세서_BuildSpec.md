@@ -418,6 +418,9 @@ CREATE INDEX idx_flashcards_due ON flashcards(user_id, due_at) WHERE deleted_at 
 ```
 - **PLAIN 스타일**: `{ "tldr": "...", "keypoints": [...] }`
 - 긴 문서는 map-reduce(청크별 요약 → 통합). 결과는 Spring이 `summaries`에 캐싱.
+- **출력 언어는 한국어 고정**(2026-07-05 결정, 베타 피드백): 원문이 영어여도 요약 값은 한국어로 쓴다.
+  전문용어·고유명사·모델명은 원어 유지 가능(glossary의 term은 원어 그대로). 이전 규칙("본문 언어를 따른다")은
+  영어 논문에서 영어 요약이 나와 타깃 사용자(한국 대학원생) 기대와 어긋나 폐기.
 
 ### 5.4 RAG Q&A (`/ai/qa`) — 환각 방지 필수
 ```

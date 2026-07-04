@@ -277,3 +277,11 @@
 - **⚠️ 베타 블로커 발견**: 새 Gemini 키 프로젝트의 무료 한도가 **20 req/day**(2.5-flash) — 오늘 e2e로 소진, 429. 이전 키 프로젝트는 수백/일 버팀. 커뮤니티 공유 전 해소 필수(이전 프로젝트 재발급/결제 연결/모델 변경). 메모리 gemini-free-tier-quota. **교훈: e2e도 쿼터 소모 — 질문 최소화**.
 - HF Space 배포 시 주의: 빌드 중 stage가 RUNNING_BUILDING로 구버전 서빙 — health 200으로 새 리비전 판단 금지, runtime API stage 확인.
 - feature web-reader-settings: 코드·테스트(web 34)·라이브 배포 완료. **passes:true는 사용자 브라우저 확인(EPUB 연속 스크롤/풀블리드/설정 실적용) 후 전환 예정.**
+
+[2026-07-05 심야] mobile-reader-sync 착수 — M2 동기화 API + shared 엔진 완료. RN은 Android SDK 설치 대기.
+- **M2 /sync API**(4da424c, 명세서 §4.5 상세 계약 먼저): GET /sync/changes?since=(tombstone 포함+cursor) + POST /sync/push(신규 clientId→id 매핑 / version→clientUpdatedAt LWW / 충돌 시 서버 상태 반환 / 삭제=tombstone / progress는 upsert LWW 예외). 소유권 강제. 게이트 자리 SYNC_REQUIRE_PRO(기본 false — P2 be-quota-tiers에서 tier 강제). **backend 99 테스트/0실패**(+12).
+- **V3 마이그레이션**: bookmarks.updated_at 추가 + 4개 테이블 BEFORE UPDATE 트리거(set_updated_at) — **JPA updated_at 매핑이 DB 소유 read-only라 수정 시 sync 커서가 변경분을 놓치던 잠재 결함 발견·해소**. Neon 반영은 다음 Cloud Run 배포 때 Flyway 자동.
+- **shared 동기화 엔진**(50f703c, §6): syncOnce = outbox push(applied 바인딩/conflicts 서버 교체/큐 제거) → changes pull(tombstone 삭제·멱등 upsert) → cursor 저장. SyncStore/SyncApi 어댑터 인터페이스(웹 IndexedDB·RN MMKV/SQLite가 구현). shared에 vitest 도입, 엔진 테스트 6개. 전체 web+shared 40 테스트 그린.
+- 막힘: **집 PC에 Android SDK/Studio 없음**(JDK 21만) — RN 앱은 빌드 검증 불가라 착수 보류(§12.3: 검증 없는 코드 금지). **사용자 액션: Android Studio 설치**(https://developer.android.com/studio — 기본 설치에 SDK+에뮬레이터 포함).
+- 다음 먼저 할 것: Android Studio 설치 확인 → mobile/ RN 0.74+ 스캐폴드 → 로그인/서재/리더(react-native-pdf) 최소 + MMKV 어댑터로 shared 엔진 연결.
+- 미결(사용자): Gemini 쿼터(20/day — 베타 블로커), AI_SERVICE_TOKEN 재발급, web-reader-settings 브라우저 확인, Cloud Run 재배포(V3+sync API 반영: cd ~/ReadMind && git pull && gcloud run deploy readmind-backend --source=./backend --region=asia-northeast3).

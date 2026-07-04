@@ -123,6 +123,169 @@ function paintOverlays(
   });
 }
 
+/**
+ * 검색 바 표면 스타일 — 리더 테마(§6.1)를 따라간다. 다크 캔버스 위에 흰 바가
+ * 튀지 않게, 바·아이콘·구분선·카운트를 테마별로 통일한다.
+ */
+const SEARCH_BAR_THEME: Record<
+  keyof typeof THEME_SURFACE,
+  { bar: string; input: string; muted: string; button: string; divider: string; noHit: string }
+> = {
+  light: {
+    bar: 'border-slate-200 bg-white/90 shadow-slate-900/10 focus-within:border-slate-400',
+    input: 'text-slate-800 placeholder:text-slate-400',
+    muted: 'text-slate-400',
+    button: 'text-slate-500 hover:bg-slate-900/5 active:bg-slate-900/10',
+    divider: 'bg-slate-200',
+    noHit: 'text-rose-500',
+  },
+  sepia: {
+    bar: 'border-[#e0d4b4] bg-[#faf5e6]/95 shadow-[#5b4636]/10 focus-within:border-[#b8a476]',
+    input: 'text-[#4b3a2a] placeholder:text-[#a8977a]',
+    muted: 'text-[#a8977a]',
+    button: 'text-[#8a774f] hover:bg-[#5b4636]/5 active:bg-[#5b4636]/10',
+    divider: 'bg-[#e0d4b4]',
+    noHit: 'text-rose-600',
+  },
+  dark: {
+    bar: 'border-[#3a3a42] bg-[#232327]/90 shadow-black/40 focus-within:border-[#5a5a66]',
+    input: 'text-slate-200 placeholder:text-slate-500',
+    muted: 'text-slate-500',
+    button: 'text-slate-400 hover:bg-white/10 active:bg-white/15',
+    divider: 'bg-[#3a3a42]',
+    noHit: 'text-rose-400',
+  },
+};
+
+/** 16px 스트로크 아이콘 — 외부 아이콘 팩 없이 인라인(번들 영향 0). */
+function Icon({ d, className }: { d: string; className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className ?? 'h-4 w-4'}
+      aria-hidden
+    >
+      <path d={d} />
+    </svg>
+  );
+}
+
+const ICON_PATHS = {
+  magnifier: 'M7 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm7 2-3.5-3.5',
+  chevronUp: 'M4 10l4-4 4 4',
+  chevronDown: 'M4 6l4 4 4-4',
+  close: 'M4 4l8 8M12 4l-8 8',
+};
+
+interface SearchBarProps {
+  theme: keyof typeof THEME_SURFACE;
+  query: string;
+  onQueryChange: (q: string) => void;
+  indexing: boolean;
+  matchCount: number;
+  activeIdx: number;
+  onNavigate: (dir: 1 | -1) => void;
+  onClose: () => void;
+  inputRef: React.RefObject<HTMLInputElement>;
+}
+
+/**
+ * 본문 검색 바 — 브라우저/문서 뷰어 찾기 바 문법(Chrome·VS Code·Acrobat)을 따른다:
+ * 돋보기 아이콘 + 입력, n/N 카운트(0건은 경고색), 구분선으로 그룹핑된 이전/다음·닫기.
+ */
+function SearchBar({
+  theme,
+  query,
+  onQueryChange,
+  indexing,
+  matchCount,
+  activeIdx,
+  onNavigate,
+  onClose,
+  inputRef,
+}: SearchBarProps) {
+  const t = SEARCH_BAR_THEME[theme];
+  const hasQuery = normalizeQuery(query).length >= MIN_QUERY_LENGTH;
+  const navButton = `flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:pointer-events-none disabled:opacity-30 ${t.button}`;
+
+  return (
+    <div
+      role="search"
+      aria-label="본문 검색"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+      className={`search-bar-enter pointer-events-auto mr-1 mt-3 flex items-center gap-1 rounded-xl border py-1.5 pl-3 pr-1.5 shadow-lg backdrop-blur-md transition-colors ${t.bar}`}
+    >
+      <span className={`shrink-0 ${t.muted}`}>
+        <Icon d={ICON_PATHS.magnifier} />
+      </span>
+      <input
+        ref={inputRef}
+        autoFocus
+        value={query}
+        onChange={(e) => onQueryChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            onNavigate(e.shiftKey ? -1 : 1);
+          }
+        }}
+        placeholder="본문 검색"
+        aria-label="본문 검색어"
+        className={`w-48 bg-transparent text-sm outline-none ${t.input}`}
+      />
+      <span
+        aria-live="polite"
+        className={`min-w-12 shrink-0 text-right text-xs tabular-nums ${
+          !indexing && hasQuery && matchCount === 0 ? t.noHit : t.muted
+        }`}
+      >
+        {indexing ? (
+          <span
+            className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-[1.5px] border-current border-t-transparent align-[-2px]"
+            aria-label="검색 준비 중"
+          />
+        ) : matchCount > 0 ? (
+          `${activeIdx + 1}/${matchCount}`
+        ) : hasQuery ? (
+          '결과 없음'
+        ) : (
+          ''
+        )}
+      </span>
+      <span className={`mx-0.5 h-4 w-px shrink-0 ${t.divider}`} aria-hidden />
+      <button
+        onClick={() => onNavigate(-1)}
+        disabled={matchCount === 0}
+        aria-label="이전 결과"
+        title="이전 결과 (Shift+Enter)"
+        className={navButton}
+      >
+        <Icon d={ICON_PATHS.chevronUp} />
+      </button>
+      <button
+        onClick={() => onNavigate(1)}
+        disabled={matchCount === 0}
+        aria-label="다음 결과"
+        title="다음 결과 (Enter)"
+        className={navButton}
+      >
+        <Icon d={ICON_PATHS.chevronDown} />
+      </button>
+      <span className={`mx-0.5 h-4 w-px shrink-0 ${t.divider}`} aria-hidden />
+      <button onClick={onClose} aria-label="검색 닫기" title="닫기 (Esc)" className={navButton}>
+        <Icon d={ICON_PATHS.close} />
+      </button>
+    </div>
+  );
+}
+
 interface PageContentProps {
   pdf: PdfDocument;
   pageNo: number;
@@ -509,7 +672,7 @@ const PdfViewer = forwardRef<PdfViewerHandle, Props>(function PdfViewer(
       const overlays = paintOverlays(
         wrapper,
         itemSpanRects(items, viewport, m.first, m.last),
-        'bg-orange-400/50',
+        'bg-amber-400/45 ring-1 ring-amber-500/60',
       );
       activeOverlaysRef.current = overlays;
       if (overlays.length > 0) {
@@ -555,57 +718,17 @@ const PdfViewer = forwardRef<PdfViewerHandle, Props>(function PdfViewer(
       {/* h-0: 검색바가 열려도 본문이 밀리지 않게 흐름에서 높이를 제거(오버레이처럼 뜬다). */}
       <div className="pointer-events-none sticky top-0 z-30 flex h-0 justify-end">
         {searchOpen && (
-          <div className="pointer-events-auto flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white/95 px-2.5 py-1.5 shadow-lg">
-            <input
-              ref={searchInputRef}
-              autoFocus
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  navigateMatch(e.shiftKey ? -1 : 1);
-                } else if (e.key === 'Escape') {
-                  closeSearch();
-                }
-              }}
-              placeholder="본문 검색 (2자 이상)"
-              aria-label="본문 검색"
-              className="w-44 bg-transparent text-sm text-slate-800 outline-none placeholder:text-slate-400"
-            />
-            <span className="min-w-12 text-right text-xs tabular-nums text-slate-400">
-              {indexing
-                ? '준비 중…'
-                : matches.length > 0
-                  ? `${activeIdx + 1}/${matches.length}`
-                  : normalizeQuery(query).length >= MIN_QUERY_LENGTH
-                    ? '0건'
-                    : ''}
-            </span>
-            <button
-              onClick={() => navigateMatch(-1)}
-              disabled={matches.length === 0}
-              aria-label="이전 결과"
-              className="rounded px-1 text-sm text-slate-500 hover:bg-slate-100 disabled:opacity-30"
-            >
-              ↑
-            </button>
-            <button
-              onClick={() => navigateMatch(1)}
-              disabled={matches.length === 0}
-              aria-label="다음 결과"
-              className="rounded px-1 text-sm text-slate-500 hover:bg-slate-100 disabled:opacity-30"
-            >
-              ↓
-            </button>
-            <button
-              onClick={closeSearch}
-              aria-label="검색 닫기"
-              className="rounded px-1 text-sm text-slate-400 hover:bg-slate-100"
-            >
-              ✕
-            </button>
-          </div>
+          <SearchBar
+            theme={theme}
+            query={query}
+            onQueryChange={setQuery}
+            indexing={indexing}
+            matchCount={matches.length}
+            activeIdx={activeIdx}
+            onNavigate={navigateMatch}
+            onClose={closeSearch}
+            inputRef={searchInputRef}
+          />
         )}
       </div>
 

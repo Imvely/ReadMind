@@ -7,3 +7,28 @@ body,
 #root {
   height: 100%;
 }
+
+/* pdf.js 텍스트 레이어 — 캔버스 위 투명 텍스트(드래그 선택용, §6.1 web-pdf-textlayer).
+   좌표는 pdf.js가 --scale-factor 변수 기반 calc로 배치한다(공식 뷰어 CSS의 최소 부분집합). */
+.textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  line-height: 1;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+}
+
+.textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+
+.textLayer ::selection {
+  background: rgb(59 130 246 / 0.35);
+}

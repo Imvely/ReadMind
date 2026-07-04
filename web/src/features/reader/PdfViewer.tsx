@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { PageViewport } from 'pdfjs-dist';
 import { loadPdf, type PdfDocument } from './pdf';
+import { findSnippetSpan } from './snippetMatch';
 
 export interface PdfViewerHandle {
   /**
@@ -51,36 +52,21 @@ const PdfViewer = forwardRef<PdfViewerHandle, Props>(function PdfViewer({ url },
         (it): it is import('pdfjs-dist/types/src/display/api').TextItem => 'str' in it,
       );
 
-      // 공백 무시 정규화로 snippet(앞 60자)을 페이지 텍스트에서 찾는다.
-      const norm = (s: string) => s.replace(/\s+/g, '').toLowerCase();
-      const target = norm(snippet.replace(/[…]+$/u, '')).slice(0, 60);
-      if (target.length < 8) return; // 너무 짧으면 오탐 — 페이지 링으로 충분
+      // 유니코드 접기 기반 매칭 — 리가처/따옴표/공백 차이를 흡수한다(snippetMatch.ts).
+      const span = findSnippetSpan(items.map((it) => it.str), snippet);
+      if (!span) return; // 못 찾으면 정직하게 페이지 링만 — 엉뚱한 위치 하이라이트 금지
 
-      let joined = '';
-      const bounds: { start: number; end: number }[] = [];
-      for (const it of items) {
-        const start = joined.length;
-        joined += norm(it.str);
-        bounds.push({ start, end: joined.length });
-      }
-      const at = joined.indexOf(target);
-      if (at < 0) return;
-      const end = at + target.length;
-
-      // 매칭 구간과 겹치는 텍스트 아이템들에 오버레이를 깐다.
       wrapper.style.position = 'relative';
       const overlays: HTMLDivElement[] = [];
-      items.forEach((it, i) => {
-        const b = bounds[i];
-        if (b.end <= at || b.start >= end || it.width === 0) return;
-        const [a, bT] = [it.transform[0], it.transform[1]];
-        const fontHeight = Math.hypot(bT, it.transform[3]) || it.height;
+      for (let i = span.firstItem; i <= span.lastItem; i++) {
+        const it = items[i];
+        if (!it || it.width === 0) continue;
+        const fontHeight = Math.hypot(it.transform[1], it.transform[3]) || it.height;
         const [x1, y1] = viewport.convertToViewportPoint(it.transform[4], it.transform[5]);
         const [x2, y2] = viewport.convertToViewportPoint(
           it.transform[4] + it.width,
           it.transform[5] + fontHeight,
         );
-        void a;
         const div = document.createElement('div');
         div.className =
           'pointer-events-none absolute rounded-sm bg-amber-300/60 transition-opacity duration-700';
@@ -90,7 +76,11 @@ const PdfViewer = forwardRef<PdfViewerHandle, Props>(function PdfViewer({ url },
         div.style.height = `${Math.abs(y2 - y1) + 2}px`;
         wrapper.appendChild(div);
         overlays.push(div);
-      });
+      }
+      if (overlays.length === 0) return;
+
+      // 근거 줄 자체로 스크롤 — "페이지 상단만 보여서 어딘지 모르는" 문제 해결.
+      overlays[0].scrollIntoView?.({ behavior: 'smooth', block: 'center' });
 
       // 2.4초 표시 후 페이드아웃 → 제거.
       window.setTimeout(() => overlays.forEach((o) => (o.style.opacity = '0')), 2400);

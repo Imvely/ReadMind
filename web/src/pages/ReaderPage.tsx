@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import PdfViewer, { type PdfViewerHandle } from '@/features/reader/PdfViewer';
+import EpubViewer from '@/features/reader/EpubViewer';
 import ReaderSettingsPanel from '@/features/reader/ReaderSettingsPanel';
 import SummaryPanel from '@/features/reader/SummaryPanel';
 import QaPanel from '@/features/reader/QaPanel';
@@ -62,7 +63,12 @@ export default function ReaderPage() {
         {/* 좌: PDF */}
         <main className="min-w-0 flex-1 border-r border-slate-200">
           {contentQuery.data ? (
-            <PdfViewer ref={pdfRef} url={contentQuery.data.url} />
+            doc?.format === 'EPUB' ? (
+              // 렌더러는 어댑터(§5) — 같은 핸들 계약으로 포맷별 교체.
+              <EpubViewer ref={pdfRef} url={contentQuery.data.url} />
+            ) : (
+              <PdfViewer ref={pdfRef} url={contentQuery.data.url} />
+            )
           ) : (
             <div className="flex h-full items-center justify-center text-slate-400">
               {docQuery.isError ? '문서를 찾을 수 없습니다.' : '문서 불러오는 중…'}

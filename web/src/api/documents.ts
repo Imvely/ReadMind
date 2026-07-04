@@ -8,13 +8,12 @@ import type {
 } from '@readmind/shared';
 import { apiRequest } from '@/lib/api';
 
-/** 파일 → 백엔드 포맷 코드. Phase 0은 PDF만 지원(SUPPORTED_FORMATS) → 그 외는 거부. */
+/** 파일 → 백엔드 포맷 코드. 뷰어가 있는 포맷만 허용(P1: PDF+EPUB) → 그 외는 거부. */
 export function uploadFlowFormat(file: File): string {
-  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-  if (!isPdf) {
-    throw new Error('현재는 PDF만 업로드할 수 있어요.');
-  }
-  return 'PDF';
+  const name = file.name.toLowerCase();
+  if (file.type === 'application/pdf' || name.endsWith('.pdf')) return 'PDF';
+  if (file.type === 'application/epub+zip' || name.endsWith('.epub')) return 'EPUB';
+  throw new Error('현재는 PDF와 EPUB만 업로드할 수 있어요.');
 }
 
 export function createDocument(req: CreateDocumentRequest): Promise<CreateDocumentResponse> {

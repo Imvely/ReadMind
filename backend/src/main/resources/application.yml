@@ -24,6 +24,9 @@ server:
     context-path: /api/v1
 
 app:
+  cors:
+    # 정적 웹 배포 오리진(콤마 구분). 빈 값이면 CORS 비활성(동일 출처/프록시 경유만 동작).
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
   jwt:
     # 운영은 반드시 JWT_SECRET 주입(32바이트 이상). 미설정 시 기동 실패.
     secret: ${JWT_SECRET}

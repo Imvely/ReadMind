@@ -22,6 +22,9 @@
 | `S3_BUCKET` | `readmind-dev` |
 | `S3_REGION` | `auto` |
 | `S3_PATH_STYLE` | `true` |
+| `CORS_ALLOWED_ORIGINS` | `https://imvely.github.io` (정적 웹 Pages 오리진. 미설정=CORS 꺼짐) |
+
+> 정적 웹(GitHub Pages) 연동 시 함께 필요: ① 이 env 반영(재배포) ② R2 버킷 CORS에 같은 오리진 GET/PUT 허용(Cloudflare 대시보드 → R2 → 버킷 → Settings → CORS). 웹 발행은 `deploy/gh-pages-deploy.sh`.
 
 ### 민감 → Secret Manager `--set-secrets` (값은 `.env`의 해당 키에서)
 | 시크릿 이름 | 앱 env 변수 | 값 출처(`.env`) |

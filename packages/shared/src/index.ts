@@ -156,3 +156,16 @@ export interface QaResponse {
   answer: string;
   sources: QaSourceDto[];
 }
+
+/** Q&A 대화 이력 한 줄 (§4.4 GET qa/history). ASSISTANT만 sources를 가진다. */
+export interface QaHistoryMessageDto {
+  role: 'USER' | 'ASSISTANT';
+  content: string;
+  sources?: QaSourceDto[] | null;
+  createdAt?: string | null;
+}
+/** 최근 세션 대화 이력. 대화가 없으면 sessionId=null, messages=[]. */
+export interface QaHistoryResponse {
+  sessionId: number | null;
+  messages: QaHistoryMessageDto[];
+}

@@ -44,6 +44,21 @@ data class QaResponse(
     val sources: List<QaSourceDto>,
 )
 
+// ── Q&A 이력 (명세서 §4.4 GET /documents/{id}/qa/history) ──
+data class QaHistoryMessageDto(
+    val role: String, // USER | ASSISTANT
+    val content: String,
+    /** ASSISTANT 메시지의 근거(§3). USER 메시지는 null. */
+    val sources: List<QaSourceDto>? = null,
+    val createdAt: java.time.Instant? = null,
+)
+
+/** 최근 세션 1개의 대화 이력(시간순). 대화가 없으면 sessionId=null, messages=[]. */
+data class QaHistoryResponse(
+    val sessionId: Long?,
+    val messages: List<QaHistoryMessageDto>,
+)
+
 // ── 번역 (명세서 §4.4) ──
 /** Phase 1 번역은 선택 텍스트 기반: {text, targetLang}. 문서 전체 번역(scope)은 추후. */
 data class TranslateRequest(

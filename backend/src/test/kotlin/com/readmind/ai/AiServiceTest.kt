@@ -1,6 +1,6 @@
 package com.readmind.ai
 
-import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.readmind.common.ApiException
 import com.readmind.common.ErrorCode
 import com.readmind.document.DocumentDto
@@ -35,7 +35,8 @@ class AiServiceTest {
     private val summaries = mock<SummaryRepository>()
     private val qaSessions = mock<QaSessionRepository>()
     private val qaMessages = mock<QaMessageRepository>()
-    private val objectMapper = ObjectMapper()
+    // 운영(Spring Boot) 매퍼와 동일하게 Kotlin 모듈 포함 — data class(AiSource) 역직렬화에 필요.
+    private val objectMapper = jacksonObjectMapper()
 
     private val service = AiService(documents, quota, ai, summaries, qaSessions, qaMessages, objectMapper)
 
@@ -203,6 +204,55 @@ class AiServiceTest {
         assertEquals(1, historyCaptor.firstValue.size)
         assertEquals("user", historyCaptor.firstValue[0].role) // 소문자로 정규화
         assertEquals("이전질문", historyCaptor.firstValue[0].content)
+    }
+
+    // ── Q&A 이력 (§4.4 qa/history) ──
+
+    @Test
+    fun `qaHistory 해피 - 최근 세션의 메시지를 시간순 반환, ASSISTANT sources 변환(pageNo→page)`() {
+        whenever(documents.get(userId, docId)).doReturn(readyDoc())
+        val session = QaSession(userId = userId, documentId = docId).apply { id = 3 }
+        whenever(qaSessions.findTopByUserIdAndDocumentIdOrderByIdDesc(userId, docId)).doReturn(session)
+        whenever(qaMessages.findBySessionIdOrderByIdAsc(3)).doReturn(
+            listOf(
+                QaMessage(sessionId = 3, role = "USER", content = "질문1"),
+                QaMessage(
+                    sessionId = 3, role = "ASSISTANT", content = "답변1",
+                    sources = """[{"chunkIndex":0,"pageNo":2,"snippet":"근거 발췌"}]""",
+                ),
+            ),
+        )
+
+        val res = service.qaHistory(userId, docId)
+
+        assertEquals(3L, res.sessionId)
+        assertEquals(2, res.messages.size)
+        assertEquals("USER", res.messages[0].role)
+        assertEquals(null, res.messages[0].sources)
+        val srcs = res.messages[1].sources!!
+        assertEquals(2, srcs[0].page) // 저장형 pageNo → 계약형 page
+        assertEquals("근거 발췌", srcs[0].snippet)
+        verify(quota, never()).record(any(), any()) // 조회 전용 — 쿼터 미차감
+    }
+
+    @Test
+    fun `qaHistory 대화 없음 - sessionId null, 빈 배열`() {
+        whenever(documents.get(userId, docId)).doReturn(readyDoc())
+        whenever(qaSessions.findTopByUserIdAndDocumentIdOrderByIdDesc(userId, docId)).doReturn(null)
+
+        val res = service.qaHistory(userId, docId)
+
+        assertEquals(null, res.sessionId)
+        assertTrue(res.messages.isEmpty())
+    }
+
+    @Test
+    fun `qaHistory 미소유 문서 - NOT_FOUND`() {
+        whenever(documents.get(userId, docId))
+            .doThrow(ApiException(ErrorCode.NOT_FOUND, "문서를 찾을 수 없습니다."))
+
+        val ex = assertThrows<ApiException> { service.qaHistory(userId, docId) }
+        assertEquals(ErrorCode.NOT_FOUND, ex.code)
     }
 
     // ── 번역 ──

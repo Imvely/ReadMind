@@ -96,6 +96,30 @@ class AiService(
     }
 
     /**
+     * 최근 세션 대화 이력 (명세서 §4.4 GET qa/history). 조회 전용 — 쿼터 미차감(변동비 0),
+     * 소유권 검증만 수행(READY 불요 — 과거 대화는 파싱 상태와 무관하게 보여준다).
+     */
+    @Transactional(readOnly = true)
+    fun qaHistory(userId: Long, documentId: Long): QaHistoryResponse {
+        documents.get(userId, documentId) // 소유권 검증(미소유 시 NOT_FOUND).
+        val session = qaSessions.findTopByUserIdAndDocumentIdOrderByIdDesc(userId, documentId)
+            ?: return QaHistoryResponse(sessionId = null, messages = emptyList())
+        val messages = qaMessages.findBySessionIdOrderByIdAsc(session.id!!).map { m ->
+            QaHistoryMessageDto(
+                role = m.role,
+                content = m.content,
+                // 저장 형태는 AiSource([{pageNo,snippet}]) — 응답 계약(QaSourceDto)으로 변환.
+                sources = m.sources?.let { raw ->
+                    objectMapper.readValue(raw, Array<AiSource>::class.java)
+                        .map { QaSourceDto(page = it.pageNo, snippet = it.snippet) }
+                },
+                createdAt = m.createdAt,
+            )
+        }
+        return QaHistoryResponse(sessionId = session.id, messages = messages)
+    }
+
+    /**
      * 선택 텍스트 번역 위임 (명세서 §4.4). 원문대조 응답.
      * 순서: 소유권 검증 → 쿼터 게이트 → AI 호출 → 쿼터 차감. 번역은 임의 텍스트라 캐시 없음.
      * 파싱 완료(READY)는 불필요 — 전달된 선택 텍스트를 번역하므로.

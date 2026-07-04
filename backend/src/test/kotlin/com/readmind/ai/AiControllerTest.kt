@@ -21,6 +21,7 @@ import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.context.TestPropertySource
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 
 /**
@@ -107,6 +108,39 @@ class AiControllerTest {
             contentType = MediaType.APPLICATION_JSON
             content = objectMapper.writeValueAsString(mapOf("style" to "PAPER"))
         }.andExpect {
+            status { isUnauthorized() }
+            jsonPath("$.error.code") { value(ErrorCode.UNAUTHORIZED.name) }
+        }
+    }
+
+    @Test
+    fun `qa history 해피패스 - 200, 메시지·근거 반환`() {
+        whenever(service.qaHistory(eq(userId), eq(7L))).doReturn(
+            QaHistoryResponse(
+                sessionId = 3,
+                messages = listOf(
+                    QaHistoryMessageDto(role = "USER", content = "질문"),
+                    QaHistoryMessageDto(
+                        role = "ASSISTANT", content = "답변",
+                        sources = listOf(QaSourceDto(page = 1, snippet = "근거")),
+                    ),
+                ),
+            ),
+        )
+
+        mockMvc.get("/documents/7/qa/history") {
+            header("Authorization", auth())
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.data.sessionId") { value(3) }
+            jsonPath("$.data.messages[0].role") { value("USER") }
+            jsonPath("$.data.messages[1].sources[0].page") { value(1) }
+        }
+    }
+
+    @Test
+    fun `qa history 권한 실패 - 토큰 없으면 401`() {
+        mockMvc.get("/documents/7/qa/history").andExpect {
             status { isUnauthorized() }
             jsonPath("$.error.code") { value(ErrorCode.UNAUTHORIZED.name) }
         }

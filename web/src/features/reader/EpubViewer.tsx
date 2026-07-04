@@ -54,10 +54,13 @@ const EpubViewer = forwardRef<PdfViewerHandle, Props>(function EpubViewer({ url 
     host.innerHTML = '';
 
     const book = ePub(url);
+    // 단일 단 = continuous+scrolled: 챕터 경계 없이 스크롤만으로 이어 읽는다
+    // (scrolled-doc은 현재 챕터만 렌더돼 다음 장 이동이 막힘 — 베타 피드백).
     const rendition = book.renderTo(host, {
       width: '100%',
       height: '100%',
-      flow: columns === 2 ? 'paginated' : 'scrolled-doc',
+      manager: columns === 2 ? 'default' : 'continuous',
+      flow: columns === 2 ? 'paginated' : 'scrolled',
       spread: columns === 2 ? 'auto' : 'none',
     });
     renditionRef.current = rendition;

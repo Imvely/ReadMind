@@ -238,3 +238,13 @@
 - 막힘: 없음. backend 편집 시점 게이트 없음(gradle 속도 문제, 의도된 트레이드오프 — 커밋 전 gradlew test).
 - 다음 먼저 할 것: feature_list 재개 — active_phase 1의 web-reader-settings(또는 p0-beta-validate 실사용 계측). 원하면 ai-service venv 구축.
 - 참고 컨텍스트: 근거 리서치=Anthropic 공식 베스트프랙티스(hooks/memory/skills 문서). 훅 테스트 스크립트는 세션 스크래치패드(레포 밖). 회사↔집 메모리 동기화 완료(~/.claude/projects/D--dy-ReadMind/memory).
+
+[2026-07-05] p0-beta-validate 선행 작업 — HF Space /docs 비공개 + 재사용률 계측 러너 + 훅 침묵버그 2건 수정 (커뮤니티 공유는 사용자가 보류)
+- 완료(검증됨):
+  - **HF Space /docs·/redoc·/openapi.json 비공개**(7c3bee2, TODO 2026-07-01 이행): main.py FastAPI에 docs/redoc/openapi=None + 노출표면 테스트 2개. Space 재배포(31eb127→4561f85) 후 라이브 검증 — /docs·/openapi.json·/redoc=404, /health=200, /ai/qa 무토큰=401. **재배포 후 클라우드 e2e PASS**(docId=38: parse 16s→READY→한국어 요약→qa sources 포함).
+  - **재사용률 계측 러너**(90149a8): scripts/metrics/run_reuse_rate.py — reuse_rate.sql을 POSTGRES_URL(Neon)에 read_only 트랜잭션으로 원커맨드 실행. 라이브: uploaders=18(전원 e2e 테스트 계정·각 1건), 재사용률 0%(베타 전 당연), 활성화율 22.2%. **베타 시작 전 e2e 계정(@readmind.dev) 제외 필터 추가 고려**.
+  - **훅 침묵 버그 2건**(a8cb116): ① verify.py — subprocess cp949 디코드 크래시로 lint 실패가 exit 1 침묵 통과(utf-8+replace로 수정, main.py E501을 실제로 놓쳤던 사례로 발견) ② guard.py — 커밋 메시지 안 ".env" 언급 오탐(따옴표 내 문자열 제거 후 검사).
+  - hf-space-deploy.sh 개선(5e99697): DEPLOY_MSG 파라미터화 + __pycache__ 오염 방지(이번에 pyc가 Space에 커밋됐던 것 정리 푸시로 제거).
+- 환경 특이점(집 PC): GFE(*.run.app)가 Windows curl의 빈 POST(Content-Length 없음)를 411 거부 — bash e2e 스크립트가 complete 단계에서 깨짐. python httpx로는 정상. jq도 미설치. → **집에서 클라우드 e2e는 python(스크래치패드 e2e_cloud.py 참조)으로**.
+- 사용자 지시: 커뮤니티 공유는 보류. **확인 질문 없이 진행**(메모리 proceed-without-asking).
+- 남음(p0-beta-validate): ① AI_SERVICE_TOKEN 재발급(사용자 콘솔 3곳: Secret Manager+HF Space Settings+로컬 .env) ② 웹 프론트 정적 배포 ③ 커뮤니티 공유+재사용률 측정(보류 중). feature passes:false 유지.

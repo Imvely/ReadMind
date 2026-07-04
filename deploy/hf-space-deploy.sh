@@ -27,6 +27,7 @@ git clone --depth 1 "https://${HF_USER}:${HF_TOKEN}@huggingface.co/spaces/${SPAC
 echo "== app/ + requirements.txt 동기화(나머지 Space 파일 보존) =="
 rm -rf "$WORK/space/app"
 cp -r ai-service/app "$WORK/space/app"
+find "$WORK/space/app" -type d -name "__pycache__" -prune -exec rm -rf {} +  # 로컬 pyc 오염 방지
 cp ai-service/requirements.txt "$WORK/space/requirements.txt"
 
 cd "$WORK/space"
@@ -36,7 +37,7 @@ if git diff --quiet && git diff --cached --quiet; then
 fi
 git add -A
 git -c user.email="lim.dayeong@gmail.com" -c user.name="dayeong.lim" \
-  commit -m "deploy: sync ai-service (ai-parse-multi txt/docx/epub + translate + gemini)"
+  commit -m "${DEPLOY_MSG:-deploy: sync ai-service}"
 git push 2>&1 | sed -E "s/${HF_TOKEN}/***/g"
 
 echo "== push 완료. HF Space 가 자동 재빌드합니다(수 분). 빌드 완료 후 e2e 재실행 =="

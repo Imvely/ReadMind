@@ -268,3 +268,12 @@
 - 테스트 집계: backend 87 / web 24 / ai-service 124 — 전부 그린. Pages 번들 index-DXSVgG-B.js 반영 확인.
 - 참고: Cloud Run 재배포는 사용자가 Cloud Shell로 2회 수행(CORS env, qa/history). GFE 411(빈 POST) 때문에 집에선 e2e를 python httpx로(스크래치패드 e2e_qa_history.py 등).
 - 남음(사용자): AI_SERVICE_TOKEN 재발급, 커뮤니티 공유(보류 중). 다음 코드 작업: web-reader-settings(P1/M3, §6.1).
+
+[2026-07-05 밤] web-reader-settings 구현 완료(1·2단계) + Gemini 키 교체 검증 + 신규 키 쿼터 블로커 발견
+- **1단계**(44afb4a): readerSettings 스토어(Zustand persist, READER_LIMITS 클램프) + Aa 팝오버. PDF 적용 — 테마=캔버스 필터(재렌더 0), 크기/2단=재렌더, 여백=패딩, 자동 스크롤=rAF. 테스트 +8.
+- **2단계**(1f2d083): EpubViewer(epubjs 어댑터, PdfViewer 동일 핸들 계약) + EPUB 업로드 허용. 사용자 피드백 2건 즉수정: ① 단일 모드 챕터 이동 불가 → continuous+scrolled 연속 스크롤(dc63fbe) ② 좌우 여백 띠 → 풀블리드(바깥 패딩 제거, 여백은 본문 body로만, f06f3c8). 테스트 EPUB 생성기=ebooklib(Downloads/readmind-test.epub). EPUB 백엔드 경로 e2e: parse READY+청크 정상.
+- **Gemini 키 교체**(사용자): 2곳(HF Space LLM_API_KEY + 로컬 .env)만 해당 — Secret Manager/백엔드 무관. 교체 직후 e2e로 parse(임베딩)/summarize(한국어)/qa(근거) 전부 새 키 정상 확인.
+- **QA 과잉 강등 개선**(dc63fbe): 반말/패러프레이즈 질문("~있어?","뭘 없애줘?")이 '모른다'로 강등되던 것 — RAG 시스템 프롬프트에 의미 동치 허용+구체 예시 앵커. 개선 확인(반말 통과), 환각 방지(없는 내용 강등)는 유지 확인. 단 "LoRA는 파라미터를 얼마나 줄여?" 한 문구는 새 리비전에서도 거부(LLM 고집, 5회 관찰) — 수용하고 기록.
+- **⚠️ 베타 블로커 발견**: 새 Gemini 키 프로젝트의 무료 한도가 **20 req/day**(2.5-flash) — 오늘 e2e로 소진, 429. 이전 키 프로젝트는 수백/일 버팀. 커뮤니티 공유 전 해소 필수(이전 프로젝트 재발급/결제 연결/모델 변경). 메모리 gemini-free-tier-quota. **교훈: e2e도 쿼터 소모 — 질문 최소화**.
+- HF Space 배포 시 주의: 빌드 중 stage가 RUNNING_BUILDING로 구버전 서빙 — health 200으로 새 리비전 판단 금지, runtime API stage 확인.
+- feature web-reader-settings: 코드·테스트(web 34)·라이브 배포 완료. **passes:true는 사용자 브라우저 확인(EPUB 연속 스크롤/풀블리드/설정 실적용) 후 전환 예정.**

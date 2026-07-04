@@ -211,7 +211,7 @@ function SearchBar({
 }: SearchBarProps) {
   const t = SEARCH_BAR_THEME[theme];
   const hasQuery = normalizeQuery(query).length >= MIN_QUERY_LENGTH;
-  const navButton = `flex h-7 w-7 items-center justify-center rounded-md transition-colors disabled:pointer-events-none disabled:opacity-30 ${t.button}`;
+  const navButton = `flex h-8 w-8 items-center justify-center rounded-lg transition-colors disabled:pointer-events-none disabled:opacity-30 ${t.button}`;
 
   return (
     <div
@@ -220,7 +220,7 @@ function SearchBar({
       onKeyDown={(e) => {
         if (e.key === 'Escape') onClose();
       }}
-      className={`search-bar-enter pointer-events-auto mr-1 mt-3 flex items-center gap-1 rounded-xl border py-1.5 pl-3 pr-1.5 shadow-lg backdrop-blur-md transition-colors ${t.bar}`}
+      className={`search-bar-enter pointer-events-auto mr-1 mt-3 flex items-center gap-1 rounded-xl border py-2.5 pl-3.5 pr-2 shadow-lg backdrop-blur-md transition-colors ${t.bar}`}
     >
       <span className={`shrink-0 ${t.muted}`}>
         <Icon d={ICON_PATHS.magnifier} />

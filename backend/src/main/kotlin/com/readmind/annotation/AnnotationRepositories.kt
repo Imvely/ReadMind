@@ -52,10 +52,20 @@ interface HighlightRepository : JpaRepository<Highlight, Long> {
         @Param("tag") tag: String?,
         pageable: Pageable,
     ): Page<Highlight>
+
+    // ── sync(§4.5): tombstone 포함 ──
+    fun findByIdAndUserId(id: Long, userId: Long): Highlight?
+    fun findByUserIdAndUpdatedAtAfter(userId: Long, since: java.time.Instant): List<Highlight>
+    fun findByUserId(userId: Long): List<Highlight>
 }
 
 interface NoteRepository : JpaRepository<Note, Long> {
     fun findByIdAndUserIdAndDeletedAtIsNull(id: Long, userId: Long): Note?
+
+    // ── sync(§4.5): tombstone 포함 — 삭제 전파를 위해 DeletedAtIsNull 필터 없음 ──
+    fun findByIdAndUserId(id: Long, userId: Long): Note?
+    fun findByUserIdAndUpdatedAtAfter(userId: Long, since: java.time.Instant): List<Note>
+    fun findByUserId(userId: Long): List<Note>
     fun findByDocumentIdAndUserIdAndDeletedAtIsNullOrderByCreatedAtAsc(
         documentId: Long,
         userId: Long,
@@ -64,6 +74,11 @@ interface NoteRepository : JpaRepository<Note, Long> {
 
 interface BookmarkRepository : JpaRepository<Bookmark, Long> {
     fun findByIdAndUserIdAndDeletedAtIsNull(id: Long, userId: Long): Bookmark?
+
+    // ── sync(§4.5) ──
+    fun findByIdAndUserId(id: Long, userId: Long): Bookmark?
+    fun findByUserIdAndUpdatedAtAfter(userId: Long, since: java.time.Instant): List<Bookmark>
+    fun findByUserId(userId: Long): List<Bookmark>
     fun findByDocumentIdAndUserIdAndDeletedAtIsNullOrderByCreatedAtAsc(
         documentId: Long,
         userId: Long,
@@ -72,4 +87,8 @@ interface BookmarkRepository : JpaRepository<Bookmark, Long> {
 
 interface ReadingProgressRepository : JpaRepository<ReadingProgress, ReadingProgressId> {
     fun findByUserIdAndDocumentId(userId: Long, documentId: Long): ReadingProgress?
+
+    // ── sync(§4.5) ──
+    fun findByUserIdAndUpdatedAtAfter(userId: Long, since: java.time.Instant): List<ReadingProgress>
+    fun findByUserId(userId: Long): List<ReadingProgress>
 }

@@ -364,6 +364,20 @@ CREATE INDEX idx_flashcards_due ON flashcards(user_id, due_at) WHERE deleted_at 
 
 **동기화 정책**: 무료=로컬 전용(클라이언트 DB). 유료=클라우드 동기화 활성. 충돌 해결은 `client_updated_at` + `version` 기준 LWW, 삭제는 tombstone(`deleted_at`)로 전파.
 
+> §4.5 상세 계약(2026-07-05 확정, mobile-reader-sync 구현):
+> - **대상 엔티티**: highlights / notes / bookmarks / progress(reading_progress). flashcards는 Phase 2 구현 후 편입.
+> - **GET /sync/changes?since=<ISO8601>** → `{cursor, changes:{highlights[], notes[], bookmarks[], progress[]}}`.
+>   서버 `updated_at > since`인 행 전부(tombstone 포함 — `deletedAt` non-null로 표시). `cursor`=서버 응답 시각, 클라는 다음 호출의 `since`로 저장. `since` 생략=전체.
+> - **POST /sync/push** body `{changes:{highlights:[...], ...}}`. 각 항목: `{clientId?, id?, documentId, ...본문필드, version, clientUpdatedAt, deleted?}`.
+>   - 신규(id 없음): insert 후 `applied`에 `{entity, clientId, id, version}` 매핑 반환(클라 로컬 id→서버 id 치환용).
+>   - 갱신: 서버 `version`과 비교. 클라 `version` ≥ 서버 → 적용(version=서버+1). 서버가 더 크면 **충돌** → `clientUpdatedAt` LWW: 클라가 최신이면 적용, 아니면 `conflicts`에 서버 현재 상태 반환(클라가 로컬 교체).
+>   - 삭제: `deleted:true` → `deleted_at` 세팅(tombstone). 행 물리 삭제 금지.
+>   - 응답 `{applied[], conflicts[], cursor}`.
+> - **progress 예외**: PK=(user,document), version 없음 — `clientUpdatedAt`만으로 LWW(더 최신이 승리). tombstone 없음(진행률은 삭제 개념 없음).
+> - **스키마 보완**: `bookmarks.updated_at` 누락 → V3 마이그레이션으로 추가(§3 스키마 갱신). 모든 적용/삭제는 `updated_at=now()` 갱신(커서 일관성).
+> - **게이트**: 스펙상 유료 전용이나 be-quota-tiers(P2) 전까지는 게이트 지점만 두고 전 티어 허용(`SYNC_REQUIRE_PRO=false` 기본). P2에서 강제 전환. (Phase 0 qa 게이트 완화와 같은 방식)
+> - 소유권: 모든 항목 `user_id`=인증 사용자 강제(§3). documentId도 본인 소유 문서만.
+
 ### 4.6 결제
 | 메서드 | 경로 | 설명 |
 |---|---|---|

@@ -24,6 +24,9 @@ server:
     context-path: /api/v1
 
 app:
+  sync:
+    # §4.5 게이트 자리 — be-quota-tiers(P2) 전까지 false(전 티어 허용). true면 전면 차단.
+    require-pro: ${SYNC_REQUIRE_PRO:false}
   cors:
     # 정적 웹 배포 오리진(콤마 구분). 빈 값이면 CORS 비활성(동일 출처/프록시 경유만 동작).
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}

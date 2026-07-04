@@ -169,3 +169,126 @@ export interface QaHistoryResponse {
   sessionId: number | null;
   messages: QaHistoryMessageDto[];
 }
+
+// ══════════ 동기화 (§4.5) — 웹·안드 공유 계약(§6) ══════════
+/** 서버 상태 한 건. tombstone은 deletedAt non-null — 클라는 로컬에서 제거한다. */
+export interface SyncHighlightDto {
+  id: number;
+  documentId: number;
+  pageNo: number | null;
+  location: unknown;
+  selectedText: string;
+  color: string;
+  note: string | null;
+  tags: string[];
+  version: number;
+  clientUpdatedAt: string | null;
+  updatedAt: string | null;
+  deletedAt: string | null;
+}
+export interface SyncNoteDto {
+  id: number;
+  documentId: number;
+  pageNo: number | null;
+  body: string;
+  version: number;
+  clientUpdatedAt: string | null;
+  updatedAt: string | null;
+  deletedAt: string | null;
+}
+export interface SyncBookmarkDto {
+  id: number;
+  documentId: number;
+  location: unknown;
+  label: string | null;
+  version: number;
+  clientUpdatedAt: string | null;
+  updatedAt: string | null;
+  deletedAt: string | null;
+}
+/** progress는 version/tombstone 없음(§4.5 예외) — clientUpdatedAt LWW만. */
+export interface SyncProgressDto {
+  documentId: number;
+  location: unknown;
+  percent: number;
+  clientUpdatedAt: string | null;
+  updatedAt: string | null;
+}
+export interface SyncChanges {
+  highlights: SyncHighlightDto[];
+  notes: SyncNoteDto[];
+  bookmarks: SyncBookmarkDto[];
+  progress: SyncProgressDto[];
+}
+export interface SyncChangesResponse {
+  /** 다음 /sync/changes 호출의 since로 쓸 서버 시각(ISO). */
+  cursor: string;
+  changes: SyncChanges;
+}
+
+/** push 입력 — 신규는 id 없이 clientId(로컬 uuid)로 보내고 applied 매핑으로 서버 id를 받는다. */
+export interface PushHighlight {
+  clientId?: string;
+  id?: number;
+  documentId: number;
+  pageNo?: number | null;
+  location?: unknown;
+  selectedText?: string;
+  color?: string;
+  note?: string | null;
+  tags?: string[];
+  version?: number;
+  clientUpdatedAt?: string;
+  deleted?: boolean;
+}
+export interface PushNote {
+  clientId?: string;
+  id?: number;
+  documentId: number;
+  pageNo?: number | null;
+  body?: string;
+  version?: number;
+  clientUpdatedAt?: string;
+  deleted?: boolean;
+}
+export interface PushBookmark {
+  clientId?: string;
+  id?: number;
+  documentId: number;
+  location?: unknown;
+  label?: string | null;
+  version?: number;
+  clientUpdatedAt?: string;
+  deleted?: boolean;
+}
+export interface PushProgress {
+  documentId: number;
+  location: unknown;
+  percent: number;
+  clientUpdatedAt?: string;
+}
+export interface SyncPushRequest {
+  changes: {
+    highlights?: PushHighlight[];
+    notes?: PushNote[];
+    bookmarks?: PushBookmark[];
+    progress?: PushProgress[];
+  };
+}
+export interface SyncAppliedDto {
+  entity: 'highlight' | 'note' | 'bookmark' | 'progress';
+  clientId: string | null;
+  id: number;
+  version: number;
+}
+export interface SyncConflictDto {
+  entity: 'highlight' | 'note' | 'bookmark';
+  id: number;
+  /** 서버 현재 상태 — 클라이언트가 로컬을 이 값으로 교체한다. */
+  server: SyncHighlightDto | SyncNoteDto | SyncBookmarkDto;
+}
+export interface SyncPushResponse {
+  applied: SyncAppliedDto[];
+  conflicts: SyncConflictDto[];
+  cursor: string;
+}

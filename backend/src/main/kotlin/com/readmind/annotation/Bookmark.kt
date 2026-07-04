@@ -42,4 +42,8 @@ class Bookmark(
 
     @Column(name = "created_at", insertable = false, updatable = false)
     var createdAt: Instant? = null
+
+    /** V3에서 추가 — sync 커서용. DB(default+트리거) 소유라 read-only 매핑. */
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    var updatedAt: Instant? = null
 }

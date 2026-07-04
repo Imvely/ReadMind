@@ -132,6 +132,46 @@
     },
     {
       "phase": 1,
+      "module": "M3",
+      "id": "web-resume-reading",
+      "spec": "§4.3, §8 P1.5",
+      "desc": "이어읽기: 진행률 자동 저장(디바운스)+리더 복원 토스트+서재 프로그레스 바",
+      "passes": false
+    },
+    {
+      "phase": 1,
+      "module": "M3",
+      "id": "web-pdf-textlayer",
+      "spec": "§6.1, §8 P1.5",
+      "desc": "PDF 텍스트 레이어(드래그 선택, 가상화 ±2p) + 본문 검색·점프",
+      "passes": false
+    },
+    {
+      "phase": 1,
+      "module": "M3",
+      "id": "web-highlight-ui",
+      "spec": "§4.3, §6.1, §8 P1.5",
+      "desc": "선택 플로팅 툴바(4색/메모/AI에 질문) + 하이라이트 오버레이 + 낙관적 업데이트",
+      "passes": false
+    },
+    {
+      "phase": 1,
+      "module": "M3",
+      "id": "web-quick-note",
+      "spec": "§3 notes.location(V4), §8 P1.5",
+      "desc": "퀵메모: 좌표 핀(접기/펼치기) + 문서 내 주석 검색. notes.location V4 마이그레이션",
+      "passes": false
+    },
+    {
+      "phase": 1,
+      "module": "M3",
+      "id": "web-annotations-panel",
+      "spec": "§6.1, §8 P1.5",
+      "desc": "기록 탭(하이라이트·메모·북마크 모아보기, 클릭 점프) + 북마크 토글",
+      "passes": false
+    },
+    {
+      "phase": 1,
       "module": "M4",
       "id": "mobile-reader-sync",
       "spec": "§6.2, §4.5",
@@ -168,6 +208,22 @@
       "id": "web-upsell",
       "spec": "§4.1, §6.1",
       "desc": "학생 이메일 인증, 업그레이드 모달, 전환율 계측",
+      "passes": false
+    },
+    {
+      "phase": 2,
+      "module": "M2",
+      "id": "share-summary-url",
+      "spec": "§4.6, §8 P2",
+      "desc": "요약 공유 URL: share_links + 무인증 공개 페이지 + 가입 CTA(재사용률 루프)",
+      "passes": false
+    },
+    {
+      "phase": 2,
+      "module": "M2",
+      "id": "export-markdown",
+      "spec": "§4.6, §8 P2",
+      "desc": "하이라이트/메모 Markdown 내보내기(원문 역링크)",
       "passes": false
     },
     {

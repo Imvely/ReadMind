@@ -199,6 +199,9 @@ CREATE TABLE notes (
   user_id       BIGINT NOT NULL REFERENCES users(id),
   document_id   BIGINT NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
   page_no       INT,
+  -- V4(2026-07, P1.5 퀵메모): 좌표 핀 위치. PDF={type,page,x,y(0~1 비율)} / EPUB={type,cfi}.
+  -- NULL 허용(기존 메모·비좌표 메모 호환). page_no는 목록/검색 표시용으로 유지.
+  location      JSONB,
   body          TEXT NOT NULL,
   client_updated_at TIMESTAMPTZ,
   version       INT NOT NULL DEFAULT 1,
@@ -378,7 +381,17 @@ CREATE INDEX idx_flashcards_due ON flashcards(user_id, due_at) WHERE deleted_at 
 > - **게이트**: 스펙상 유료 전용이나 be-quota-tiers(P2) 전까지는 게이트 지점만 두고 전 티어 허용(`SYNC_REQUIRE_PRO=false` 기본). P2에서 강제 전환. (Phase 0 qa 게이트 완화와 같은 방식)
 > - 소유권: 모든 항목 `user_id`=인증 사용자 강제(§3). documentId도 본인 소유 문서만.
 
-### 4.6 결제
+### 4.6 공유·내보내기 (P2; 기획서 2026-07)
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| POST | `/documents/{id}/share` | 요약 공유 링크 생성(멱등 — 기존 토큰 재사용) → `{url}` |
+| DELETE | `/documents/{id}/share` | 공유 회수(revoked_at) |
+| GET | `/public/shared/{token}` | **무인증** 공개 요약 조회 — 요약 JSON+문서 제목만. 원문/Q&A 접근 불가. 소유권 규칙(§3)의 명시적 예외. rate limit 필수 |
+| GET | `/documents/{id}/annotations/export?format=md` | 하이라이트(색)+메모를 페이지순 Markdown으로, 각 항목에 원문 역링크 |
+
+스키마(§3에 P2 시점 V마이그레이션으로 추가): `share_links(id, user_id, document_id UNIQUE, token VARCHAR UNIQUE — 랜덤 128bit+, scope VARCHAR DEFAULT 'SUMMARY', revoked_at, created_at)`
+
+### 4.7 결제
 | 메서드 | 경로 | 설명 |
 |---|---|---|
 | POST | `/billing/checkout` | `{plan}` → 결제사 결제창 파라미터 |
@@ -556,6 +569,13 @@ readmind/
 - [x] **웹**: 업로드 화면 + pdf.js 뷰어 + 우측 요약/Q&A 패널. Q&A sources 클릭 점프
 - [ ] 대학원 커뮤니티 베타 배포. **검증 지표: 재사용(같은 사람이 다른 논문을 또 올리는가)**
 
+### Phase 1.5 — 리더 완성 (베타 공유 전 결격 해소; 기획서 docs/ReadMind_기능기획_리더경험_2026-07.md)
+- [ ] 이어읽기: 진행률 자동 저장(디바운스)+리더 복원+서재 프로그레스 바 (`web-resume-reading`)
+- [ ] PDF 텍스트 레이어(선택 가능, 가상화) + 본문 검색 (`web-pdf-textlayer`)
+- [ ] 하이라이트 UI: 선택 툴바(4색/메모/AI에 질문)+오버레이+낙관적 업데이트 (`web-highlight-ui`)
+- [ ] 퀵메모: 좌표 핀(접기/펼치기)+문서 내 주석 검색 — notes.location V4 (`web-quick-note`)
+- [ ] 기록 탭(하이라이트·메모·북마크 모아보기+점프)+북마크 토글 (`web-annotations-panel`)
+
 ### Phase 1 — 리더 + 동기화 (2~3개월)
 - [ ] 하이라이트/메모/북마크/진행률 CRUD + 통합 검색 `/highlights/search`
 - [ ] EPUB/TXT/DOCX 파서 추가, 리딩 설정(테마·폰트·자동스크롤)
@@ -567,6 +587,8 @@ readmind/
 - [ ] 쿼터 시스템(`usage_quotas`) + FREE/PRO/STUDENT 게이트 전면 적용
 - [ ] 결제 연동(토스/아임포트) + 웹훅 + 구독 상태 관리
 - [ ] 학생 이메일 인증, 업그레이드 모달, 전환율 계측
+- [ ] 요약 공유 URL(§4.6 share_links, 공개 페이지+CTA — 재사용률 루프) (`share-summary-url`)
+- [ ] 하이라이트/메모 Markdown 내보내기(원문 역링크) (`export-markdown`)
 
 ### Phase 3 — 확장 (7~12개월)
 - [ ] HWP/HWPX, MOBI/FB2/CBZ 포맷, OCR(스캔 PDF)

@@ -286,3 +286,11 @@
 - 다음 먼저 할 것: Android Studio 설치 확인 → mobile/ RN 0.74+ 스캐폴드 → 로그인/서재/리더(react-native-pdf) 최소 + MMKV 어댑터로 shared 엔진 연결.
 - 미결(사용자): Gemini 쿼터(20/day — 베타 블로커), AI_SERVICE_TOKEN 재발급, web-reader-settings 브라우저 확인, Cloud Run 재배포(V3+sync API 반영: cd ~/ReadMind && git pull && gcloud run deploy readmind-backend --source=./backend --region=asia-northeast3).
 - **[추가] sync 라이브 e2e ALL PASS**(로컬 docker PG + bootRun): 신규 push(clientId 매핑)/changes 커서/수정 적용(version 2)/**V3 트리거 실동작(수정분이 since 커서에 잡힘 — 유일한 미검증 조각이었음)**/충돌→서버 상태/tombstone 전파/타인 문서 404/progress upsert. integrationTest도 실 PG에서 5개 통과(Flyway V1→V3 적용 검증). 집 PC에 docker 있음 — readmind_smoke DB는 integrationTest 선행 조건(createdb 필요, 이번에 생성). e2e 스크립트=스크래치패드 e2e_sync.py(레포 밖). 검증 후 postgres 컨테이너·bootRun 정리.
+
+[2026-07-06] 시장조사→기획 채택→P1.5 착수: web-resume-reading 완료
+- **시장조사+기획서**(d80de1b): docs/ReadMind_기능기획_리더경험_2026-07.md — 일반 리더 8종+논문/AI 리더 17종 웹 리서치(에이전트 2병렬). 핵심: ① 하이라이트/북마크/이어읽기/주석검색은 "없으면 결격" 표준인데 우리는 백엔드만 있고 UI 없음 ② 공유/내보내기가 미충족 수요 1위 ③ **'좌표 주석×AI 근거×간격반복' 3결합 시장 공백**(Polar 사망) — P2 FSRS 방향 검증 ④ 한국어 논문 공백. 사용자 전체 채택.
+- **채택 반영**(60288d5): 명세서 §3 notes.location(V4 예정)·§4.6 공유/내보내기 신설·§8 P1.5 "리더 완성" 신설(5항목)+P2 2항목. feature_list 7종 등록(P1.5는 mobile-reader-sync 앞 배치 — 다음 작업이 자연히 P1.5).
+- **web-resume-reading 완료**(9d62490, Pages 배포): 명세서 §4.2 progressPercent 먼저 → backend list에 reading_progress 조인(테스트+1, 총 100) → web useSaveProgress(2s 디바운스+언마운트 즉시 플러시)/useProgressQuery, PdfViewer 스크롤 페이지 추적+initialPage 복원, EpubViewer relocated+initialCfi, 복원 배너("이어읽기: p.N부터 · 처음부터"), 서재 카드 진행률 바. 테스트 web 36(+2: 디바운스 최종값/언마운트 플러시).
+- 막힘: 없음. **서재 진행률 바는 Cloud Run 재배포 후 표시**(리더 저장/복원은 기존 API라 즉시 동작). passes:true 전환은 사용자 브라우저 확인 후.
+- 다음 먼저 할 것: web-pdf-textlayer(§6.1 — 텍스트 선택 가능한 레이어+본문 검색, 가상화 ±2p). 하이라이트 UI의 토대.
+- 미결(사용자) 누적: Cloud Run 재배포(V3+sync+progressPercent), Android Studio 설치(RN), Gemini 쿼터(베타 블로커), AI_SERVICE_TOKEN 재발급, web-reader-settings·web-resume-reading 브라우저 확인.

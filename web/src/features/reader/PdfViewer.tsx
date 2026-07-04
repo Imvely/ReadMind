@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import type { PageViewport } from 'pdfjs-dist';
 import { loadPdf, type PdfDocument } from './pdf';
 import { findSnippetSpan } from './snippetMatch';
+import { THEME_SURFACE, useReaderSettings } from '@/store/readerSettings';
 
 export interface PdfViewerHandle {
   /**
@@ -16,16 +17,25 @@ interface Props {
 }
 
 /**
- * pdf.js 렌더러. 모든 페이지를 세로로 렌더하고 scrollToPage로 점프한다.
+ * pdf.js 렌더러. 모든 페이지를 세로(또는 2단)로 렌더하고 scrollToPage로 점프한다.
+ * 리딩 설정(§6.1): 테마=캔버스 CSS 필터, 크기=스케일, 여백=패딩, 2단=그리드, 자동 스크롤.
  * 렌더러는 어댑터로 격리되어 있어 EPUB(epubjs) 등으로 교체 가능(§5).
  */
 const PdfViewer = forwardRef<PdfViewerHandle, Props>(function PdfViewer({ url }, ref) {
+  const scrollRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const viewportRefs = useRef<(PageViewport | null)[]>([]);
   const pdfRef = useRef<PdfDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const theme = useReaderSettings((s) => s.theme);
+  const fontScale = useReaderSettings((s) => s.fontScale);
+  const marginX = useReaderSettings((s) => s.marginX);
+  const columns = useReaderSettings((s) => s.columns);
+  const autoScroll = useReaderSettings((s) => s.autoScroll);
+  const autoScrollSpeed = useReaderSettings((s) => s.autoScrollSpeed);
 
   useImperativeHandle(ref, () => ({
     scrollToPage: (pageNo: number, snippet?: string) => {
@@ -90,6 +100,7 @@ const PdfViewer = forwardRef<PdfViewerHandle, Props>(function PdfViewer({ url },
     }
   }
 
+  // 본문 렌더 — 크기(fontScale)/단(columns)이 바뀌면 레이아웃이 달라져 재렌더한다.
   useEffect(() => {
     let cancelled = false;
 
@@ -106,21 +117,25 @@ const PdfViewer = forwardRef<PdfViewerHandle, Props>(function PdfViewer({ url },
         pageRefs.current = [];
         viewportRefs.current = [];
 
-        const width = container.clientWidth - 32;
+        const gap = 16;
+        const avail = container.clientWidth - (columns === 2 ? gap : 0);
+        const pageWidth = (avail / columns) * fontScale;
+
         for (let n = 1; n <= pdf.numPages; n++) {
           if (cancelled) return;
           const page = await pdf.getPage(n);
           const base = page.getViewport({ scale: 1 });
-          const scale = width / base.width;
+          const scale = pageWidth / base.width;
           const viewport = page.getViewport({ scale });
 
           const wrapper = document.createElement('div');
-          wrapper.className = 'mx-auto mb-4 rounded bg-white shadow-sm transition-shadow';
+          wrapper.className = 'rounded bg-white shadow-sm transition-shadow';
           wrapper.style.width = `${viewport.width}px`;
 
           const canvas = document.createElement('canvas');
           canvas.width = viewport.width;
           canvas.height = viewport.height;
+          canvas.style.filter = THEME_SURFACE[useReaderSettings.getState().theme].canvasFilter;
           const ctx = canvas.getContext('2d');
           if (!ctx) continue;
 
@@ -146,13 +161,44 @@ const PdfViewer = forwardRef<PdfViewerHandle, Props>(function PdfViewer({ url },
       void pdfRef.current?.destroy();
       pdfRef.current = null;
     };
-  }, [url]);
+  }, [url, fontScale, columns]);
+
+  // 테마 변경은 재렌더 없이 캔버스 필터만 갱신한다(비용 0).
+  useEffect(() => {
+    for (const w of pageRefs.current) {
+      const canvas = w?.querySelector('canvas');
+      if (canvas) canvas.style.filter = THEME_SURFACE[theme].canvasFilter;
+    }
+  }, [theme, loading]);
+
+  // 자동 스크롤 — rAF 기반, 속도는 px/초. 끝에 닿으면 멈춘다.
+  useEffect(() => {
+    if (!autoScroll) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    let raf = 0;
+    let prev = performance.now();
+    const tick = (now: number) => {
+      el.scrollTop += (autoScrollSpeed * (now - prev)) / 1000;
+      prev = now;
+      if (el.scrollTop + el.clientHeight < el.scrollHeight - 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [autoScroll, autoScrollSpeed, loading]);
 
   return (
-    <div className="relative h-full overflow-auto bg-slate-100 p-4">
+    <div
+      ref={scrollRef}
+      className="relative h-full overflow-auto"
+      style={{ backgroundColor: THEME_SURFACE[theme].bg, padding: `16px ${16 + marginX}px` }}
+    >
       {loading && <p className="absolute left-1/2 top-4 -translate-x-1/2 text-slate-400">PDF 로딩 중…</p>}
       {error && <p className="text-red-600">{error}</p>}
-      <div ref={containerRef} />
+      <div
+        ref={containerRef}
+        className={columns === 2 ? 'grid grid-cols-2 items-start justify-items-center gap-4' : 'flex flex-col items-center gap-4'}
+      />
     </div>
   );
 });

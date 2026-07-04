@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import PdfViewer, { type PdfViewerHandle } from '@/features/reader/PdfViewer';
+import ReaderSettingsPanel from '@/features/reader/ReaderSettingsPanel';
 import SummaryPanel from '@/features/reader/SummaryPanel';
 import QaPanel from '@/features/reader/QaPanel';
 import { useDocumentContentQuery, useDocumentQuery } from '@/hooks/documents';
@@ -12,6 +13,7 @@ export default function ReaderPage() {
   const id = Number(docId);
   const pdfRef = useRef<PdfViewerHandle>(null);
   const [tab, setTab] = useState<Tab>('summary');
+  const [showSettings, setShowSettings] = useState(false);
 
   const docQuery = useDocumentQuery(id);
   const contentQuery = useDocumentContentQuery(id, docQuery.data != null);
@@ -35,6 +37,25 @@ export default function ReaderPage() {
             {doc.parseStatus === 'FAILED' ? '분석 실패' : '분석 중…'}
           </span>
         )}
+        <div className="relative ml-auto">
+          <button
+            onClick={() => setShowSettings((v) => !v)}
+            aria-label="리딩 설정"
+            aria-expanded={showSettings}
+            className={`rounded-lg border px-2.5 py-1 text-sm ${
+              showSettings
+                ? 'border-slate-900 bg-slate-900 text-white'
+                : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            Aa
+          </button>
+          {showSettings && (
+            <div className="absolute right-0 top-full z-20 mt-2">
+              <ReaderSettingsPanel />
+            </div>
+          )}
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1">

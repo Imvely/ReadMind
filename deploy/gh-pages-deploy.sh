@@ -11,7 +11,9 @@
 set -euo pipefail
 
 API_BASE="${VITE_API_BASE_URL:-https://readmind-backend-53543020852.asia-northeast3.run.app/api/v1}"
-BASE_PATH="/ReadMind/"   # 프로젝트 Pages 는 /<repo>/ 하위 경로에서 서빙된다
+# 프로젝트 Pages 는 /<repo>/ 하위 경로 서빙. 절대경로("/ReadMind/")는 Git Bash 의
+# MSYS 경로 변환("/Program Files/Git/ReadMind/")에 오염되므로 상대 base 를 쓴다(HashRouter라 안전).
+BASE_PATH="./"
 REMOTE_URL=$(git config --get remote.origin.url)
 
 [ -d web ] || { echo "!! 레포 루트에서 실행하세요."; exit 1; }

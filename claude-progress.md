@@ -248,3 +248,14 @@
 - 환경 특이점(집 PC): GFE(*.run.app)가 Windows curl의 빈 POST(Content-Length 없음)를 411 거부 — bash e2e 스크립트가 complete 단계에서 깨짐. python httpx로는 정상. jq도 미설치. → **집에서 클라우드 e2e는 python(스크래치패드 e2e_cloud.py 참조)으로**.
 - 사용자 지시: 커뮤니티 공유는 보류. **확인 질문 없이 진행**(메모리 proceed-without-asking).
 - 남음(p0-beta-validate): ① AI_SERVICE_TOKEN 재발급(사용자 콘솔 3곳: Secret Manager+HF Space Settings+로컬 .env) ② 웹 프론트 정적 배포 ③ 커뮤니티 공유+재사용률 측정(보류 중). feature passes:false 유지.
+
+[2026-07-05 오후] 웹 프론트 정적 배포 — GitHub Pages + 백엔드 CORS + R2 CORS, Pages 오리진 e2e 전 구간 통과
+- 완료(검증됨):
+  - **웹 라이브: https://imvely.github.io/ReadMind/** (gh-pages 브랜치, deploy/gh-pages-deploy.sh). HashRouter 전환(정적 호스트 SPA rewrite 부재 대응). vite base는 상대("./") — **Git Bash가 "--base=/ReadMind/"를 "/Program Files/Git/ReadMind/"로 변환(MSYS path mangling)해 첫 배포 자산경로가 깨졌던 것** 수정.
+  - **백엔드 CORS**(1766a99): CORS_ALLOWED_ORIGINS env(빈값=비활성) 기반, credentials 미사용(JWT 헤더). 테스트 2개(허용 preflight 200+헤더/미허용 403). 사용자가 Cloud Shell로 배포 — 라이브 확인: Pages 오리진 preflight allow-origin 정확, evil 오리진 403.
+  - **R2 버킷 CORS**: 사용자가 대시보드에서 imvely.github.io 규칙 추가(ExposeHeaders 4종 포함 — pdf.js range 요청용). 라이브: preflight 204+Allow-Origin, PUT 200.
+  - **Pages 오리진 관점 e2e 통과**(Origin 헤더 포함 전 시퀀스): 로그인→documents→R2 preflight/PUT→complete→parse READY→qa(sources+CORS 헤더). e2e-pages-*@readmind.dev 계정.
+- 배포 경로 결정 기록: HF Space 정적 호스팅 시도 → **재발급 HF_TOKEN이 readmind-ai 전용(fine-grained)이라 Space 생성 불가** → GitHub Pages 전환(credential manager 인증, 사용자 승인 1회). R2 버킷 CORS는 S3키가 오브젝트 전용이라 API 변경 불가 — 대시보드(사용자).
+- 막힘: 없음. 주의 — R2 preflight는 204가 정상(테스트에서 200 기대는 내 오류였음).
+- 다음 먼저 할 것: AI_SERVICE_TOKEN 재발급(사용자) → 커뮤니티 공유(사용자 타이밍) → 재사용률 측정 시작(scripts/metrics, e2e 계정 @readmind.dev 제외 필터 추가).
+- 참고: gh-pages 재배포는 bash deploy/gh-pages-deploy.sh 한 방(집 PC, credential manager 인증). Pages HTML CDN 반영에 수 분 지연 있을 수 있음.

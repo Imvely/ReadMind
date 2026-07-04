@@ -101,6 +101,20 @@ export default function LibraryPage() {
                   {doc.parseError}
                 </p>
               )}
+              {doc.progressPercent != null && doc.progressPercent > 0 && (
+                // 이어읽기 진행률(§4.2 P1.5) — 카드 하단 프로그레스 바.
+                <span className="mt-2 flex items-center gap-2" aria-label={`읽기 진행률 ${Math.round(doc.progressPercent)}%`}>
+                  <span className="h-1 flex-1 overflow-hidden rounded-full bg-slate-100">
+                    <span
+                      className="block h-full rounded-full bg-amber-400"
+                      style={{ width: `${Math.min(100, doc.progressPercent)}%` }}
+                    />
+                  </span>
+                  <span className="shrink-0 text-[11px] tabular-nums text-slate-400">
+                    {Math.round(doc.progressPercent)}%
+                  </span>
+                </span>
+              )}
             </button>
             {doc.parseStatus === 'FAILED' && (
               <button

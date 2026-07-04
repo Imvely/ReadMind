@@ -14,6 +14,10 @@ export interface PdfViewerHandle {
 
 interface Props {
   url: string;
+  /** 이어읽기 복원(1-based). 렌더 완료 후 1회 점프(§4.2 P1.5). */
+  initialPage?: number;
+  /** 스크롤로 현재 페이지가 바뀔 때 보고(스로틀) — 진행률 저장용. */
+  onPositionChange?: (pos: { page: number; totalPages: number }) => void;
 }
 
 /**
@@ -21,7 +25,10 @@ interface Props {
  * 리딩 설정(§6.1): 테마=캔버스 CSS 필터, 크기=스케일, 여백=패딩, 2단=그리드, 자동 스크롤.
  * 렌더러는 어댑터로 격리되어 있어 EPUB(epubjs) 등으로 교체 가능(§5).
  */
-const PdfViewer = forwardRef<PdfViewerHandle, Props>(function PdfViewer({ url }, ref) {
+const PdfViewer = forwardRef<PdfViewerHandle, Props>(function PdfViewer(
+  { url, initialPage, onPositionChange },
+  ref,
+) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -29,6 +36,7 @@ const PdfViewer = forwardRef<PdfViewerHandle, Props>(function PdfViewer({ url },
   const pdfRef = useRef<PdfDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const restoredRef = useRef(false);
 
   const theme = useReaderSettings((s) => s.theme);
   const fontScale = useReaderSettings((s) => s.fontScale);
@@ -146,7 +154,14 @@ const PdfViewer = forwardRef<PdfViewerHandle, Props>(function PdfViewer({ url },
 
           await page.render({ canvasContext: ctx, viewport }).promise;
         }
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          // 이어읽기 복원 — 최초 렌더에서만(설정 변경 재렌더에선 현재 위치 유지가 자연스러움).
+          if (!restoredRef.current && initialPage && initialPage > 1) {
+            restoredRef.current = true;
+            pageRefs.current[initialPage - 1]?.scrollIntoView({ block: 'start' });
+          }
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'PDF를 불러오지 못했습니다.');
@@ -170,6 +185,26 @@ const PdfViewer = forwardRef<PdfViewerHandle, Props>(function PdfViewer({ url },
       if (canvas) canvas.style.filter = THEME_SURFACE[theme].canvasFilter;
     }
   }, [theme, loading]);
+
+  // 현재 페이지 추적 — 스크롤 시 뷰포트 상단에 걸친 페이지를 보고한다(진행률 저장용).
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !onPositionChange) return;
+    let last = 0;
+    const onScroll = () => {
+      const now = Date.now();
+      if (now - last < 500) return;
+      last = now;
+      const top = el.scrollTop + 48;
+      let page = 1;
+      pageRefs.current.forEach((w, i) => {
+        if (w && w.offsetTop <= top) page = i + 1;
+      });
+      onPositionChange({ page, totalPages: pageRefs.current.length });
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [onPositionChange, loading]);
 
   // 자동 스크롤 — rAF 기반, 속도는 px/초. 끝에 닿으면 멈춘다.
   useEffect(() => {

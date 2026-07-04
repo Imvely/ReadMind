@@ -308,7 +308,7 @@ CREATE INDEX idx_flashcards_due ON flashcards(user_id, due_at) WHERE deleted_at 
 |---|---|---|
 | POST | `/documents` | 업로드 초기화 → presigned URL 반환 `{documentId, uploadUrl}` |
 | POST | `/documents/{id}/complete` | 업로드 완료 통지 → 파싱 비동기 시작 |
-| GET | `/documents` | 내 문서 목록(검색·정렬·필터) |
+| GET | `/documents` | 내 문서 목록(검색·정렬·필터). 각 항목에 `progressPercent`(읽기 진행률, 없으면 null — P1.5 이어읽기, 2026-07) 포함 |
 | GET | `/documents/{id}` | 문서 메타 + parse_status (FAILED면 `parseError` 사유 포함) |
 | GET | `/documents/{id}/content` | 렌더용 원문 스트림/URL(권한 확인) |
 | DELETE | `/documents/{id}` | 소프트 삭제 |

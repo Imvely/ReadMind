@@ -97,6 +97,8 @@ export interface DocumentDto {
   parseStatus: ParseStatus;
   /** FAILED일 때만 내려오는 실패 사유 (백엔드는 null 필드 생략). */
   parseError?: string | null;
+  /** 읽기 진행률 % — 목록에서만 채워짐, 없으면 null (§4.2 P1.5 이어읽기). */
+  progressPercent?: number | null;
   createdAt: string | null;
 }
 export interface DocumentListResponse {
@@ -106,6 +108,19 @@ export interface DocumentListResponse {
 }
 export interface DocumentContentResponse {
   url: string;
+}
+
+// ── 주석/진행률 (§4.3) ──
+/** 리더 위치 — 포맷 무관(§3): PDF={type:'pdf',page,scrollRatio?} / EPUB={type:'epub',cfi}. */
+export interface UpdateProgressRequest {
+  location: unknown;
+  percent: number;
+}
+export interface ProgressDto {
+  documentId: number;
+  location: unknown;
+  percent: number;
+  updatedAt: string | null;
 }
 
 // ── AI 위임 (§4.4) ──

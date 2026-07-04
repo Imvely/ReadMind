@@ -13,6 +13,7 @@ class DocumentService(
     private val documents: DocumentRepository,
     private val storage: DocumentStorage,
     private val parseRunner: DocumentParseRunner,
+    private val progress: com.readmind.annotation.ReadingProgressRepository,
 ) {
 
     /** 업로드 초기화: documents row(PENDING) 생성 + presigned PUT URL 발급. */
@@ -53,8 +54,10 @@ class DocumentService(
     @Transactional(readOnly = true)
     fun list(userId: Long, pageable: Pageable): DocumentListResponse {
         val page = documents.findByUserIdAndDeletedAtIsNull(userId, pageable)
+        // 이어읽기(§4.2 P1.5): 서재 카드 프로그레스 바용 진행률 조인(사용자당 문서 수 소규모라 1쿼리 맵).
+        val percentByDoc = progress.findByUserId(userId).associate { it.documentId to it.percent }
         return DocumentListResponse(
-            items = page.content.map { it.toDto() },
+            items = page.content.map { it.toDto().copy(progressPercent = percentByDoc[it.id]) },
             totalElements = page.totalElements,
             hasNext = page.hasNext(),
         )

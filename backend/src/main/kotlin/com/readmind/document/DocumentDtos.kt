@@ -41,6 +41,8 @@ data class DocumentDto(
     val createdAt: Instant?,
     /** FAILED일 때만 채워지는 실패 사유 (명세서 §4.2). */
     val parseError: String? = null,
+    /** 읽기 진행률 %(reading_progress) — 목록에서만 채움, 없으면 null (§4.2 P1.5). */
+    val progressPercent: java.math.BigDecimal? = null,
 )
 
 /** 목록 페이지네이션 (명세서 §4: data.items[], totalElements, hasNext). */

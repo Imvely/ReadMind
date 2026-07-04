@@ -21,13 +21,34 @@ class DocumentServiceTest {
     private val documents = mock<DocumentRepository>()
     private val storage = mock<DocumentStorage>()
     private val parseRunner = mock<DocumentParseRunner>()
-    private val service = DocumentService(documents, storage, parseRunner)
+    private val progress = org.mockito.kotlin.mock<com.readmind.annotation.ReadingProgressRepository>()
+    private val service = DocumentService(documents, storage, parseRunner, progress)
 
     private fun doc(id: Long = 1L, userId: Long = 10L, status: ParseStatus = ParseStatus.PENDING) =
         Document(
             userId = userId, title = "t", format = "PDF",
             storageKey = "users/$userId/x.pdf", fileSize = 100,
         ).also { it.id = id; it.parseStatus = status }
+
+    @Test
+    fun `list - reading_progress를 조인해 progressPercent를 채운다(없으면 null)`() {
+        val docs = listOf(doc(id = 1L), doc(id = 2L))
+        whenever(documents.findByUserIdAndDeletedAtIsNull(eq(10L), any()))
+            .doReturn(org.springframework.data.domain.PageImpl(docs))
+        whenever(progress.findByUserId(10L)).doReturn(
+            listOf(
+                com.readmind.annotation.ReadingProgress(
+                    userId = 10L, documentId = 1L, location = "{}",
+                    percent = java.math.BigDecimal("37.50"),
+                ),
+            ),
+        )
+
+        val res = service.list(10L, org.springframework.data.domain.Pageable.unpaged())
+
+        assertEquals(java.math.BigDecimal("37.50"), res.items.first { it.id == 1L }.progressPercent)
+        assertEquals(null, res.items.first { it.id == 2L }.progressPercent)
+    }
 
     @Test
     fun `create - PENDING row 저장 + presigned PUT URL 반환`() {

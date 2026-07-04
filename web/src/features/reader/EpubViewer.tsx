@@ -5,6 +5,10 @@ import { useReaderSettings, type ReaderTheme } from '@/store/readerSettings';
 
 interface Props {
   url: string;
+  /** 이어읽기 복원 — 저장된 CFI. */
+  initialCfi?: string;
+  /** 위치 변경 보고(relocated) — 진행률 저장용. */
+  onPositionChange?: (pos: { cfi: string; spineIndex: number; spineTotal: number }) => void;
 }
 
 /** 테마별 EPUB 본문 색 — 리플로우 문서라 캔버스 필터가 아닌 실제 CSS로 적용한다. */
@@ -19,7 +23,10 @@ const EPUB_THEME: Record<ReaderTheme, { color: string; background: string }> = {
  * 리딩 설정: 테마/크기/줄간격/여백은 epubjs themes로 실제 적용(리플로우),
  * 단 구성=2단이면 양면(paginated spread), 단일이면 연속 스크롤(자동 스크롤 가능).
  */
-const EpubViewer = forwardRef<PdfViewerHandle, Props>(function EpubViewer({ url }, ref) {
+const EpubViewer = forwardRef<PdfViewerHandle, Props>(function EpubViewer(
+  { url, initialCfi, onPositionChange },
+  ref,
+) {
   const hostRef = useRef<HTMLDivElement>(null);
   const renditionRef = useRef<Rendition | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,8 +72,22 @@ const EpubViewer = forwardRef<PdfViewerHandle, Props>(function EpubViewer({ url 
     });
     renditionRef.current = rendition;
 
+    // 위치 보고 — epubjs relocated 이벤트(§4.2 P1.5 이어읽기).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rendition.on('relocated', (loc: any) => {
+      const cfi = loc?.start?.cfi;
+      if (typeof cfi === 'string') {
+        onPositionChange?.({
+          cfi,
+          spineIndex: Number(loc?.start?.index ?? 0),
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          spineTotal: Number((book.spine as any)?.length ?? 1),
+        });
+      }
+    });
+
     rendition
-      .display()
+      .display(initialCfi)
       .then(() => setLoading(false))
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : 'EPUB을 불러오지 못했습니다.');

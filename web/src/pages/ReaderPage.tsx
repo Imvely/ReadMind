@@ -19,8 +19,8 @@ export default function ReaderPage() {
   const doc = docQuery.data;
   const isReady = doc?.parseStatus === 'READY';
 
-  function jumpToPage(page: number) {
-    pdfRef.current?.scrollToPage(page);
+  function jumpToPage(page: number, snippet?: string) {
+    pdfRef.current?.scrollToPage(page, snippet);
   }
 
   return (

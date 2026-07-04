@@ -1,9 +1,13 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import type { PageViewport } from 'pdfjs-dist';
 import { loadPdf, type PdfDocument } from './pdf';
 
 export interface PdfViewerHandle {
-  /** 1-based 페이지로 스크롤하고 잠깐 강조한다(Q&A 근거 클릭 점프용). */
-  scrollToPage: (pageNo: number) => void;
+  /**
+   * 1-based 페이지로 스크롤하고 잠깐 강조한다(Q&A 근거 클릭 점프용).
+   * snippet이 있으면 해당 텍스트 위치를 찾아 몇 초간 하이라이트했다가 페이드아웃한다.
+   */
+  scrollToPage: (pageNo: number, snippet?: string) => void;
 }
 
 interface Props {
@@ -17,33 +21,100 @@ interface Props {
 const PdfViewer = forwardRef<PdfViewerHandle, Props>(function PdfViewer({ url }, ref) {
   const containerRef = useRef<HTMLDivElement>(null);
   const pageRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const viewportRefs = useRef<(PageViewport | null)[]>([]);
+  const pdfRef = useRef<PdfDocument | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useImperativeHandle(ref, () => ({
-    scrollToPage: (pageNo: number) => {
+    scrollToPage: (pageNo: number, snippet?: string) => {
       const el = pageRefs.current[pageNo - 1];
       if (!el) return;
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       el.classList.add('ring-2', 'ring-amber-400');
       window.setTimeout(() => el.classList.remove('ring-2', 'ring-amber-400'), 1600);
+      if (snippet) void flashSnippet(pageNo, snippet);
     },
   }));
 
+  /** 근거 snippet의 텍스트 위치를 찾아 임시 하이라이트를 띄운다(§6.1 — 못 찾으면 페이지 링만). */
+  async function flashSnippet(pageNo: number, snippet: string) {
+    const pdf = pdfRef.current;
+    const wrapper = pageRefs.current[pageNo - 1];
+    const viewport = viewportRefs.current[pageNo - 1];
+    if (!pdf || !wrapper || !viewport) return;
+
+    try {
+      const page = await pdf.getPage(pageNo);
+      const textContent = await page.getTextContent();
+      const items = textContent.items.filter(
+        (it): it is import('pdfjs-dist/types/src/display/api').TextItem => 'str' in it,
+      );
+
+      // 공백 무시 정규화로 snippet(앞 60자)을 페이지 텍스트에서 찾는다.
+      const norm = (s: string) => s.replace(/\s+/g, '').toLowerCase();
+      const target = norm(snippet.replace(/[…]+$/u, '')).slice(0, 60);
+      if (target.length < 8) return; // 너무 짧으면 오탐 — 페이지 링으로 충분
+
+      let joined = '';
+      const bounds: { start: number; end: number }[] = [];
+      for (const it of items) {
+        const start = joined.length;
+        joined += norm(it.str);
+        bounds.push({ start, end: joined.length });
+      }
+      const at = joined.indexOf(target);
+      if (at < 0) return;
+      const end = at + target.length;
+
+      // 매칭 구간과 겹치는 텍스트 아이템들에 오버레이를 깐다.
+      wrapper.style.position = 'relative';
+      const overlays: HTMLDivElement[] = [];
+      items.forEach((it, i) => {
+        const b = bounds[i];
+        if (b.end <= at || b.start >= end || it.width === 0) return;
+        const [a, bT] = [it.transform[0], it.transform[1]];
+        const fontHeight = Math.hypot(bT, it.transform[3]) || it.height;
+        const [x1, y1] = viewport.convertToViewportPoint(it.transform[4], it.transform[5]);
+        const [x2, y2] = viewport.convertToViewportPoint(
+          it.transform[4] + it.width,
+          it.transform[5] + fontHeight,
+        );
+        void a;
+        const div = document.createElement('div');
+        div.className =
+          'pointer-events-none absolute rounded-sm bg-amber-300/60 transition-opacity duration-700';
+        div.style.left = `${Math.min(x1, x2) - 1}px`;
+        div.style.top = `${Math.min(y1, y2) - 1}px`;
+        div.style.width = `${Math.abs(x2 - x1) + 2}px`;
+        div.style.height = `${Math.abs(y2 - y1) + 2}px`;
+        wrapper.appendChild(div);
+        overlays.push(div);
+      });
+
+      // 2.4초 표시 후 페이드아웃 → 제거.
+      window.setTimeout(() => overlays.forEach((o) => (o.style.opacity = '0')), 2400);
+      window.setTimeout(() => overlays.forEach((o) => o.remove()), 3200);
+    } catch {
+      // 하이라이트는 보조 연출 — 실패해도 점프(페이지 링)는 이미 동작했다.
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
-    let pdf: PdfDocument | null = null;
 
     async function render() {
       setLoading(true);
       setError(null);
       try {
-        pdf = await loadPdf(url);
+        const pdf = await loadPdf(url);
+        pdfRef.current = pdf;
         if (cancelled) return;
         const container = containerRef.current;
         if (!container) return;
         container.innerHTML = '';
         pageRefs.current = [];
+        viewportRefs.current = [];
 
         const width = container.clientWidth - 32;
         for (let n = 1; n <= pdf.numPages; n++) {
@@ -66,6 +137,7 @@ const PdfViewer = forwardRef<PdfViewerHandle, Props>(function PdfViewer({ url },
           wrapper.appendChild(canvas);
           container.appendChild(wrapper);
           pageRefs.current[n - 1] = wrapper;
+          viewportRefs.current[n - 1] = viewport;
 
           await page.render({ canvasContext: ctx, viewport }).promise;
         }
@@ -81,7 +153,8 @@ const PdfViewer = forwardRef<PdfViewerHandle, Props>(function PdfViewer({ url },
     void render();
     return () => {
       cancelled = true;
-      void pdf?.destroy();
+      void pdfRef.current?.destroy();
+      pdfRef.current = null;
     };
   }, [url]);
 
